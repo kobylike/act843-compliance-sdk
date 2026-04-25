@@ -203,10 +203,11 @@
                                 </td>
                                 <td class="py-3 px-2 font-mono font-bold">{{ $log->score }}</td>
                                 <td class="py-3 px-2">
-                                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold
-                                                {{ $log->severity === 'HIGH' ? 'bg-red-100 text-red-700' : '' }}
-                                                {{ $log->severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' : '' }}
-                                                {{ $log->severity === 'LOW' ? 'bg-green-100 text-green-700' : '' }}">
+                                    <span
+                                        class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold
+                                                            {{ $log->severity === 'HIGH' ? 'bg-red-100 text-red-700' : '' }}
+                                                            {{ $log->severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' : '' }}
+                                                            {{ $log->severity === 'LOW' ? 'bg-green-100 text-green-700' : '' }}">
                                         {{ $log->severity }}
                                     </span>
                                 </td>
@@ -233,8 +234,8 @@
                         <div
                             class="flex justify-between items-center p-3 bg-slate-50 rounded-xl hover:shadow-sm transition">
                             <div>
-                                <a href="{{ route('ip.profile', $ip->ip) }}"
-                                    class="font-mono text-sm font-medium text-slate-800 hover:text-indigo-600">{{ $ip->ip }}</a>
+                                <a href="{{ route('compliance.ip.profile', $log->ip_address) }}"
+                                    class="text-indigo-600 hover:text-indigo-800 font-medium">{{ $log->ip_address }}</a>
                                 @if($ip->country) <span class="text-xs text-slate-500 ml-2">{{ $ip->country }}</span> @endif
                             </div>
                             <div class="flex items-center gap-3">
