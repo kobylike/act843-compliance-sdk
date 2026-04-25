@@ -2,10 +2,10 @@
 
 namespace GhanaCompliance\Act843SDK\Livewire;
 
-use GhanaCompliance\Act843SDK\Models\ComplianceLog;
-use GhanaCompliance\Act843SDK\Models\IpReputation;
-use GhanaCompliance\Act843SDK\Models\SecurityAlert;
-use GhanaCompliance\Act843SDK\Services\ComplianceHealthService;
+use App\Models\ComplianceLog;
+use App\Models\IpReputation;
+use App\Models\SecurityAlert;
+use App\Services\ComplianceHealthService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Livewire\Component;
@@ -158,7 +158,7 @@ class SecurityDashboard extends Component
         if ($this->filterSeverity) $query->where('severity', $this->filterSeverity);
         if ($this->filterType) $query->where('type', $this->filterType);
 
-        return view('livewire.security-dashboard', [
+        return view('compliance::livewire.security-dashboard', [
             'logs' => $query->latest()->paginate(20),
             'ips' => IpReputation::orderByDesc('score')->limit(15)->get(),
             'chartData' => $this->getChartData(),
