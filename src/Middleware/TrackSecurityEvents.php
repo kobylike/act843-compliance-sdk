@@ -1,6 +1,6 @@
 <?php
 
-namespace GhanaCompliance\Act843SDK\Http\Middleware;
+namespace GhanaCompliance\Act843SDK\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
