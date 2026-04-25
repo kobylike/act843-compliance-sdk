@@ -3,7 +3,10 @@
 namespace GhanaCompliance\Act843SDK\Livewire;
 
 use Livewire\Component;
-use App\Models\ComplianceLog;
+
+
+use GhanaCompliance\Act843SDK\Models\ComplianceLog;
+
 
 class IpProfile extends Component
 {

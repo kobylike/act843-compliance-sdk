@@ -2,10 +2,10 @@
 
 namespace GhanaCompliance\Act843SDK\Livewire;
 
-use App\Models\ComplianceLog;
-use App\Models\IpReputation;
-use App\Models\SecurityAlert;
-use App\Services\ComplianceHealthService;
+use GhanaCompliance\Act843SDK\Models\ComplianceLog;
+use GhanaCompliance\Act843SDK\Models\IpReputation;
+use GhanaCompliance\Act843SDK\Models\SecurityAlert;
+use GhanaCompliance\Act843SDK\Services\ComplianceHealthService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Livewire\Component;
