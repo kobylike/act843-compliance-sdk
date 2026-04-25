@@ -29,11 +29,9 @@ class ComplianceInstallCommand extends Command
     protected function publishConfig(): void
     {
         $target = config_path('compliance.php');
-        if (File::exists($target)) {
-            if (!$this->confirm('Config file already exists. Overwrite?', false)) {
-                $this->info('Skipped config file.');
-                return;
-            }
+        if (File::exists($target) && !$this->confirm('Config file already exists. Overwrite?', false)) {
+            $this->info('Skipped config file.');
+            return;
         }
         $defaultConfig = $this->getDefaultConfig();
         File::put($target, $defaultConfig);
@@ -42,6 +40,11 @@ class ComplianceInstallCommand extends Command
 
     protected function runMigrations(): void
     {
+        // First publish migrations
+        $this->call('vendor:publish', ['--tag' => 'compliance-migrations', '--force' => true]);
+        $this->info('✅ Migrations published.');
+
+        // Then run them
         if ($this->confirm('Run compliance migrations now?', true)) {
             $this->call('migrate');
             $this->info('✅ Migrations executed.');
