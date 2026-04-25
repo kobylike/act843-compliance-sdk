@@ -4,7 +4,7 @@
         <!-- Header -->
         <div class="mb-8">
             <div class="flex items-center gap-3">
-                <a href="{{ route('dashboard') }}"
+                <a href="{{ route('compliance.dashboard') }}"
                     class="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 text-sm">
                     ← Back to Dashboard
                 </a>
