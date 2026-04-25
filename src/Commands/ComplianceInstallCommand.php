@@ -109,7 +109,7 @@ PHP;
         $middlewareLine = '\\GhanaCompliance\\Act843SDK\\Middleware\\TrackSecurityEvents::class';
         if (!str_contains($content, $middlewareLine)) {
             $pattern = '/->withMiddleware\(function \(Middleware \$middleware\): void \{\s*/';
-            $replacement = "$0        \$middleware->web(append: [$middlewareLine::class]);\n";
+            $replacement = "$0        \$middleware->web(append: [$middlewareLine]);\n";
             if (preg_match($pattern, $content)) {
                 $newContent = preg_replace($pattern, $replacement, $content);
                 File::put($bootstrapPath, $newContent);
