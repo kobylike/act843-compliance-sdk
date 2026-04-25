@@ -134,12 +134,12 @@ PHP;
 
         $routesPath = base_path('routes/web.php');
         $routeCode = "
-// Compliance SDK routes (detection-only dashboard)
-Route::middleware(['auth'])->group(function () {
-    Route::get('/security-dashboard', \\GhanaCompliance\\Act843SDK\\Livewire\\SecurityDashboard::class)->name('compliance.dashboard');
-    Route::get('/ip/{ip}', \\GhanaCompliance\\Act843SDK\\Livewire\\IpProfile::class)->name('compliance.ip.profile');
-});
-";
+        // Compliance SDK routes (detection-only dashboard)
+        Route::middleware(['auth'])->group(function () {
+            Route::get('/security-dashboard', \\GhanaCompliance\\Act843SDK\\Livewire\\SecurityDashboard::class)->name('compliance.dashboard');
+            Route::get('/ip/{ip}', \\GhanaCompliance\\Act843SDK\\Livewire\\IpProfile::class)->name('ip.profile');
+        });
+        ";
         $content = File::get($routesPath);
         if (!str_contains($content, 'security-dashboard')) {
             File::append($routesPath, $routeCode);
