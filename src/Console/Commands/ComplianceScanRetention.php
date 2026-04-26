@@ -2,8 +2,8 @@
 
 namespace GhanaCompliance\Act843SDK\Console\Commands;
 
-use App\Compliance\Modules\DataRetention\RetentionPolicyChecker;
-use App\Compliance\Modules\DataRetention\OutdatedDataScanner;
+use GhanaCompliance\Act843SDK\Compliance\Modules\DataRetention\RetentionPolicyChecker;
+use GhanaCompliance\Act843SDK\Compliance\Modules\DataRetention\OutdatedDataScanner;
 use Illuminate\Console\Command;
 
 class ComplianceScanRetention extends Command

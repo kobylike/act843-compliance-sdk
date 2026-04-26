@@ -2,7 +2,7 @@
 
 namespace GhanaCompliance\Act843SDK\Console\Commands;
 
-use App\Compliance\Modules\AuthenticationSecurity\PasswordPolicyChecker;
+use GhanaCompliance\Act843SDK\Compliance\Modules\AuthenticationSecurity\PasswordPolicyChecker;
 use Illuminate\Console\Command;
 
 class ComplianceScanPasswords extends Command
