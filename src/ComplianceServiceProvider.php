@@ -39,8 +39,9 @@ class ComplianceServiceProvider extends ServiceProvider
         // Register event listener for failed login attempts
         Event::listen(Failed::class, \GhanaCompliance\Act843SDK\Listeners\LogFailedLoginAttempt::class);
 
-        // Load routes and views
+        // Load routes
         $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
+        $this->loadRoutesFrom(__DIR__ . '/../routes/api.php');   // ← NEW
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'compliance');
     }
 
