@@ -30,6 +30,6 @@ class PredictedAttacks extends Component
 
     public function render()
     {
-        return view('livewire.predicted-attacks');
+        return view('compliance::livewire.predicted-attacks');
     }
 }

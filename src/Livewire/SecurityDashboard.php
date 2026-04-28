@@ -158,7 +158,7 @@ class SecurityDashboard extends Component
         if ($this->filterSeverity) $query->where('severity', $this->filterSeverity);
         if ($this->filterType) $query->where('type', $this->filterType);
 
-        return view('livewire.security-dashboard', [
+        return view('compliance::livewire.security-dashboard', [
             'logs' => $query->latest()->paginate(20),
             'ips' => IpReputation::orderByDesc('score')->limit(15)->get(),
             'chartData' => $this->getChartData(),

@@ -46,7 +46,7 @@ class IpProfile extends Component
 
     public function render()
     {
-        return view('livewire.ip-profile', [
+        return view('compliance::livewire.ip-profil', [
             'logs' => ComplianceLog::where('ip_address', $this->ip)
                 ->latest()
                 ->take(20)

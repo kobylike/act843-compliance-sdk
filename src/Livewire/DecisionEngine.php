@@ -127,6 +127,6 @@ class DecisionEngine extends Component
 
     public function render()
     {
-        return view('livewire.decision-engine');
+        return view('compliance::livewire.decision-engine');
     }
 }

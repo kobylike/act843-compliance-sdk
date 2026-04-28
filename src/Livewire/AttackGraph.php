@@ -98,6 +98,6 @@ class AttackGraph extends Component
 
     public function render()
     {
-        return view('livewire.attack-graph');
+        return view('compliance::livewire.attack-graph');
     }
 }
