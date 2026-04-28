@@ -99,7 +99,12 @@ class PasswordPolicyChecker
             ->get(['password']);
 
         foreach ($users as $user) {
-            if ($this->isWeakHash($user->password)) {
+            $password = $user->password;
+            // Skip null or empty passwords (e.g., social login users)
+            if ($password === null || $password === '') {
+                continue;
+            }
+            if ($this->isWeakHash($password)) {
                 $stats['weak_hashes']++;
             }
         }
@@ -107,20 +112,21 @@ class PasswordPolicyChecker
 
     /**
      * Determine if a password hash is weak.
-     * Weak = MD5 (32 hex), SHA1 (40 hex), or any unknown format.
+     * Weak = MD5 (32 hex), SHA1 (40 hex), plain text, or any unknown format.
      * Strong = bcrypt ($2y$, $2a$, $2b$) or Argon2 ($argon2).
      */
     protected function isWeakHash(string $hash): bool
     {
         // Strong modern hashes
-        if (preg_match('/^\$2[aby]\$\d+\$/', $hash)) return false;
-        if (str_starts_with($hash, '$argon2')) return false;
+        if (preg_match('/^\$2[aby]\$\d+\$/', $hash)) return false; // bcrypt
+        if (str_starts_with($hash, '$argon2')) return false;      // Argon2
 
-        // Weak: unsalted MD5/SHA1 (32 or 40 hex characters)
+        // Weak: unsalted MD5 (32 hex) or SHA1 (40 hex)
         if (preg_match('/^[a-f0-9]{32}$/i', $hash)) return true;
         if (preg_match('/^[a-f0-9]{40}$/i', $hash)) return true;
 
-        // Unknown format – treat as weak for safety
+        // Weak: plain text or any other format
+        // (heuristic: if it doesn't look like a hash, treat as weak)
         return true;
     }
 
