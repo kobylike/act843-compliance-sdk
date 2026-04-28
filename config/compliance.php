@@ -17,4 +17,5 @@ return [
     // 🔥 NEW: Allow deep password scan (sampling user hashes)
     'allow_deep_password_scan' => env('ALLOW_DEEP_PASSWORD_SCAN', false),
     'report_email' => env('COMPLIANCE_REPORT_EMAIL', 'kobylike2@gmail.com'),
+    'anomaly_detection' => env('COMPLIANCE_ANOMALY_DETECTION', false),
 ];

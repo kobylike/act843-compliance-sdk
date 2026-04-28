@@ -16,6 +16,10 @@
                     class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-700 hover:bg-slate-50 transition">
                     📥 Export CSV
                 </button>
+                <a href="{{ route('compliance.report') }}"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-700 hover:bg-slate-50 transition">
+                    📄 PDF Report
+                </a>
                 <button wire:click="$toggle('autoRefresh')"
                     class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-700 hover:bg-slate-50 transition">
                     {{ $autoRefresh ? '⏸️ Pause' : '▶️ Auto-refresh' }}
@@ -110,6 +114,7 @@
                 </div>
             </div>
             <div class="grid md:grid-cols-2 gap-6">
+                <!-- Password Policy card -->
                 <div class="border border-slate-200 rounded-xl p-4">
                     <div class="flex items-center gap-2 mb-3">
                         <span class="text-xl">🔐</span>
@@ -131,6 +136,7 @@
                         @endif
                     </div>
                 </div>
+                <!-- Data Retention card -->
                 <div class="border border-slate-200 rounded-xl p-4">
                     <div class="flex items-center gap-2 mb-3">
                         <span class="text-xl">🗄️</span>
@@ -162,7 +168,12 @@
             @endif
         </div>
 
-        <!-- Charts Row (3 charts) -->
+        <!-- Decision Engine and Attack Graph -->
+        @livewire('decision-engine')
+        @livewire('attack-graph')
+        @livewire('predicted-attacks')
+
+        <!-- Charts Row -->
         <div class="grid lg:grid-cols-3 gap-8 mb-10">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
                 <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">📈 Risk Score Trend</h3>
@@ -192,7 +203,7 @@
                             <th class="py-3 px-2">Attempts</th>
                             <th class="py-3 px-2">Reason</th>
                             <th class="py-3 px-2">Time</th>
-                            </td>
+                        </tr>
                     </thead>
                     <tbody>
                         @foreach($logs as $log)
@@ -203,16 +214,14 @@
                                 </td>
                                 <td class="py-3 px-2 font-mono font-bold">{{ $log->score }}</td>
                                 <td class="py-3 px-2">
-                                    <span
-                                        class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold
-                                                                    {{ $log->severity === 'HIGH' ? 'bg-red-100 text-red-700' : '' }}
-                                                                    {{ $log->severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' : '' }}
-                                                                    {{ $log->severity === 'LOW' ? 'bg-green-100 text-green-700' : '' }}">
+                                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold
+                                                    {{ $log->severity === 'HIGH' ? 'bg-red-100 text-red-700' : '' }}
+                                                    {{ $log->severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' : '' }}
+                                                    {{ $log->severity === 'LOW' ? 'bg-green-100 text-green-700' : '' }}">
                                         {{ $log->severity }}
                                     </span>
                                 </td>
                                 <td class="py-3 px-2">{{ $log->attempts }}</td>
-                                <!-- Explanation column -->
                                 <td class="py-3 px-2 text-slate-500 text-xs">
                                     <div title="{{ $log->meta['explanation'] ?? 'No explanation' }}"
                                         class="cursor-help max-w-xs truncate">
@@ -235,7 +244,7 @@
                             class="flex justify-between items-center p-3 bg-slate-50 rounded-xl hover:shadow-sm transition">
                             <div>
                                 <a href="{{ route('compliance.ip.profile', $ip->ip) }}"
-                                    class="text-indigo-600 hover:text-indigo-800 font-medium">{{ $log->ip_address }}</a>
+                                    class="font-mono text-sm font-medium text-slate-800 hover:text-indigo-600">{{ $ip->ip }}</a>
                                 @if($ip->country) <span class="text-xs text-slate-500 ml-2">{{ $ip->country }}</span> @endif
                             </div>
                             <div class="flex items-center gap-3">

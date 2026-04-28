@@ -3,10 +3,7 @@
 namespace GhanaCompliance\Act843SDK\Livewire;
 
 use Livewire\Component;
-
-
 use GhanaCompliance\Act843SDK\Models\ComplianceLog;
-
 
 class IpProfile extends Component
 {
@@ -49,7 +46,7 @@ class IpProfile extends Component
 
     public function render()
     {
-        return view('compliance::livewire.ip-profile', [
+        return view('livewire.ip-profile', [
             'logs' => ComplianceLog::where('ip_address', $this->ip)
                 ->latest()
                 ->take(20)

@@ -2,7 +2,6 @@
 
 namespace GhanaCompliance\Act843SDK\Services\Security;
 
-use GhanaCompliance\Act843SDK\Models\IpReputation;
 use Illuminate\Support\Facades\Cache;
 use GhanaCompliance\Act843SDK\Services\Security\ThreatIntelligenceService;
 use GhanaCompliance\Act843SDK\Services\Security\GeoLocationService;
@@ -51,13 +50,24 @@ class ComplianceAnalyzer
 
         // Recidivism bonus
         $recidivismBonus = 0;
-        $record = IpReputation::where('ip', $ip)->first();
+        $record = \App\Models\IpReputation::where('ip', $ip)->first();
         if ($record && $record->score > 60) {
             $recidivismBonus = 20;
             $score += 20;
         }
 
-        // Cap and severity
+        // Anomaly score (Isolation Forest) – optional, controlled by config
+        $anomalyScore = 0;
+        if (config('compliance.anomaly_detection', false)) {
+            try {
+                $anomalyScore = app(AnomalyScorer::class)->score();
+                $score += $anomalyScore;
+            } catch (\Exception $e) {
+                logger('Anomaly scoring failed: ' . $e->getMessage());
+            }
+        }
+
+        // Cap at 100
         $score = min($score, 100);
         $severity = $this->severity($score);
 
@@ -69,6 +79,7 @@ class ComplianceAnalyzer
             'geo_risk_score' => $geoRisk,
             'time_risk' => $timeOfDayRisk,
             'recidivism_bonus' => $recidivismBonus,
+            'anomaly_score' => $anomalyScore,
         ];
 
         $explanation = $this->generateExplanation($analysisDetails, $score, $attempts, $ip, $severity);
@@ -116,6 +127,11 @@ class ComplianceAnalyzer
         // Recidivism
         if ($analysis['recidivism_bonus'] > 0) {
             $parts[] = "Repeat offender (past risk >60): +{$analysis['recidivism_bonus']}";
+        }
+
+        // Anomaly score (ML) – only show if >0
+        if ($analysis['anomaly_score'] > 0) {
+            $parts[] = "Anomaly detection (Isolation Forest): +{$analysis['anomaly_score']}";
         }
 
         // Final

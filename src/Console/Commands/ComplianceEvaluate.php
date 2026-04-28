@@ -3,9 +3,9 @@
 
 namespace GhanaCompliance\Act843SDK\Console\Commands;
 
-use App\Compliance\Evaluation\MetricsCollector;
-use App\Compliance\Evaluation\AttackSimulator;
-use App\Compliance\Evaluation\ReportGenerator;
+use GhanaCompliance\Act843SDK\Compliance\Evaluation\MetricsCollector;
+use GhanaCompliance\Act843SDK\Compliance\Evaluation\AttackSimulator;
+use GhanaCompliance\Act843SDK\Compliance\Evaluation\ReportGenerator;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
