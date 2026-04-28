@@ -5,12 +5,18 @@ namespace GhanaCompliance\Act843SDK;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Auth\Events\Failed;
+use Livewire\Livewire;
+use GhanaCompliance\Act843SDK\Livewire\SecurityDashboard;
+use GhanaCompliance\Act843SDK\Livewire\IpProfile;
+use GhanaCompliance\Act843SDK\Livewire\DecisionEngine;
+use GhanaCompliance\Act843SDK\Livewire\AttackGraph;
+use GhanaCompliance\Act843SDK\Livewire\PredictedAttacks;
 
 class ComplianceServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
-        // Register commands for both web and console (required for Artisan::call)
+        // Register commands for both web and console
         $this->commands([
             \GhanaCompliance\Act843SDK\Console\Commands\ComplianceInstallCommand::class,
             \GhanaCompliance\Act843SDK\Console\Commands\ComplianceScanPasswords::class,
@@ -22,7 +28,6 @@ class ComplianceServiceProvider extends ServiceProvider
         ]);
 
         if ($this->app->runningInConsole()) {
-            // Publishing assets (only needed when installing/updating)
             $this->publishes([
                 __DIR__ . '/../config/compliance.php' => config_path('compliance.php'),
             ], 'compliance-config');
@@ -42,7 +47,16 @@ class ComplianceServiceProvider extends ServiceProvider
         // Load routes
         $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
         $this->loadRoutesFrom(__DIR__ . '/../routes/api.php');
+
+        // Load views (namespace 'compliance::')
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'compliance');
+
+        // Register Livewire components
+        Livewire::component('security-dashboard', SecurityDashboard::class);
+        Livewire::component('ip-profile', IpProfile::class);
+        Livewire::component('decision-engine', DecisionEngine::class);
+        Livewire::component('attack-graph', AttackGraph::class);
+        Livewire::component('predicted-attacks', PredictedAttacks::class);
     }
 
     public function register(): void
