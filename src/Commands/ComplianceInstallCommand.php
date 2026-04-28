@@ -40,14 +40,17 @@ class ComplianceInstallCommand extends Command
 
     protected function runMigrations(): void
     {
-        // First publish migrations
         $this->call('vendor:publish', ['--tag' => 'compliance-migrations', '--force' => true]);
         $this->info('✅ Migrations published.');
 
-        // Then run them
         if ($this->confirm('Run compliance migrations now?', true)) {
-            $this->call('migrate');
-            $this->info('✅ Migrations executed.');
+            try {
+                $this->call('migrate', ['--force' => true]);
+                $this->info('✅ Migrations executed.');
+            } catch (\Exception $e) {
+                $this->warn('Migrations failed: ' . $e->getMessage());
+                $this->warn('Please run "php artisan migrate" manually.');
+            }
         } else {
             $this->warn('Please run migrations later: php artisan migrate');
         }
