@@ -2,24 +2,20 @@
 
 namespace GhanaCompliance\Act843SDK\Console\Commands;
 
-use GhanaCompliance\Act843SDK\Compliance\Modules\AuthenticationSecurity\PasswordPolicyChecker;
 use Illuminate\Console\Command;
+use GhanaCompliance\Act843SDK\Compliance\Modules\AuthenticationSecurity\PasswordPolicyChecker;
 
 class ComplianceScanPasswords extends Command
 {
-    protected $signature = 'compliance:scan-passwords {--deep : Run deep hash sampling (requires config approval)}';
+    protected $signature = 'compliance:scan-passwords {--deep : Run deep hash sampling} {--force : Skip confirmation prompt}';
     protected $description = 'Scan password policies and hashing algorithms for compliance';
 
     public function handle(PasswordPolicyChecker $checker)
     {
         $deep = $this->option('deep');
+        $force = $this->option('force');
 
-        if ($deep && !config('compliance.allow_deep_password_scan', false)) {
-            $this->error('Deep scan is disabled. Set ALLOW_DEEP_PASSWORD_SCAN=true in .env');
-            return Command::FAILURE;
-        }
-
-        if ($deep) {
+        if ($deep && !$force) {
             if (!$this->confirm('Deep scan will sample user password hashes. Continue?', true)) {
                 return Command::SUCCESS;
             }
