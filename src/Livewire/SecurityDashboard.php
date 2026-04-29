@@ -15,7 +15,7 @@ use Livewire\Attributes\On;
 class SecurityDashboard extends Component
 {
     use WithPagination;
-    use WithPagination;
+
 
     public $filterSeverity = '';
     public $filterType = '';
