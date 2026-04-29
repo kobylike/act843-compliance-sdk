@@ -82,7 +82,7 @@ class SecurityDashboard extends Component
             return;
         }
 
-        Artisan::call('compliance:scan-passwords', ['--deep' => true]);
+        Artisan::call('compliance:scan-passwords', ['--deep' => true, '--force' => true]);
         $this->loadComplianceHealth();
         $this->dispatch('notify', 'Deep password scan completed. Check threat table for weak hashes.', 'success');
     }
