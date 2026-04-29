@@ -2,25 +2,27 @@
 
 namespace GhanaCompliance\Act843SDK\Livewire;
 
+use Carbon\Carbon;
 use GhanaCompliance\Act843SDK\Models\ComplianceLog;
 use GhanaCompliance\Act843SDK\Models\IpReputation;
 use GhanaCompliance\Act843SDK\Models\SecurityAlert;
 use GhanaCompliance\Act843SDK\Services\ComplianceHealthService;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Livewire\Attributes\On;
 
+#[Layout('layouts.compliance')]
 class SecurityDashboard extends Component
 {
     use WithPagination;
-
 
     public $filterSeverity = '';
     public $filterType = '';
     public $dateRange = 'today';
     public $autoRefresh = true;
+    public $simpleMode = false;          // Simple Mode toggle
     public $stats = [];
     public $complianceHealth = [];
 
@@ -30,6 +32,14 @@ class SecurityDashboard extends Component
     {
         $this->loadStats();
         $this->loadComplianceHealth();
+        // Load simple mode preference from session
+        $this->simpleMode = session('compliance_simple_mode', false);
+    }
+
+    public function toggleSimpleMode()
+    {
+        $this->simpleMode = !$this->simpleMode;
+        session(['compliance_simple_mode' => $this->simpleMode]);
     }
 
     public function loadStats()
@@ -72,19 +82,15 @@ class SecurityDashboard extends Component
         $this->dispatch('notify', 'Compliance scans completed', 'success');
     }
 
-    /**
-     * Run a deep password scan (sampling). Only available if ALLOW_DEEP_PASSWORD_SCAN=true in .env.
-     */
     public function runDeepScan()
     {
         if (!config('compliance.allow_deep_password_scan', false)) {
-            $this->dispatch('notify', 'Deep scanning is disabled. Set ALLOW_DEEP_PASSWORD_SCAN=true in .env', 'error');
+            $this->dispatch('notify', 'Deep scanning disabled. Set ALLOW_DEEP_PASSWORD_SCAN=true in .env', 'error');
             return;
         }
-
         Artisan::call('compliance:scan-passwords', ['--deep' => true, '--force' => true]);
         $this->loadComplianceHealth();
-        $this->dispatch('notify', 'Deep password scan completed. Check threat table for weak hashes.', 'success');
+        $this->dispatch('notify', 'Deep password scan completed.', 'success');
     }
 
     #[On('echo:security,AlertEvent')]
@@ -163,6 +169,68 @@ class SecurityDashboard extends Component
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
+    /**
+     * Get plain‑language executive summary for non‑technical users.
+     */
+    public function getExecutiveSummary()
+    {
+        $health = $this->complianceHealth;
+        $score = $health['score'];
+        $grade = $health['grade'];
+        $weakHashes = $health['password_policy']['weak_hashes'];
+        $weakPolicies = $health['password_policy']['weak_policies'];
+        $nonCompliantTables = $health['data_retention']['non_compliant'];
+
+        $statusColor = $score >= 80 ? 'green' : ($score >= 60 ? 'yellow' : 'red');
+        $statusText = $score >= 80 ? 'Good' : ($score >= 60 ? 'Needs attention' : 'Critical issues');
+
+        $alerts = [];
+
+        if ($weakHashes > 0) {
+            $alerts[] = [
+                'severity' => 'high',
+                'message' => "{$weakHashes} user passwords are stored in a weak format (plain text or MD5). Fix immediately.",
+                'action' => 'Run `php artisan compliance:scan-passwords --deep --force` and then re‑hash passwords.',
+                'action_label' => 'How to fix',
+            ];
+        }
+
+        if ($weakPolicies > 0) {
+            $alerts[] = [
+                'severity' => 'medium',
+                'message' => 'Your password policy is missing some security rules (min length or complexity).',
+                'action' => 'Check config/compliance.php and enforce min length 12 and complexity.',
+                'action_label' => 'Fix policy',
+            ];
+        }
+
+        if ($nonCompliantTables > 0) {
+            $alerts[] = [
+                'severity' => 'medium',
+                'message' => "{$nonCompliantTables} database tables have data older than allowed retention period.",
+                'action' => 'Run `php artisan compliance:purge` to delete old records.',
+                'action_label' => 'Clean up',
+            ];
+        }
+
+        if (empty($alerts)) {
+            $alerts[] = [
+                'severity' => 'low',
+                'message' => 'All compliance checks passed. Your system is compliant with Act 843.',
+                'action' => '',
+                'action_label' => '',
+            ];
+        }
+
+        return [
+            'score' => $score,
+            'grade' => $grade,
+            'status_color' => $statusColor,
+            'status_text' => $statusText,
+            'alerts' => $alerts,
+        ];
+    }
+
     public function render()
     {
         $alerts = SecurityAlert::unresolved()
@@ -174,6 +242,15 @@ class SecurityDashboard extends Component
         if ($this->filterSeverity) $query->where('severity', $this->filterSeverity);
         if ($this->filterType) $query->where('type', $this->filterType);
 
+        // In simple mode, only show medium/high severity logs and hide routine scans (score 10)
+        if ($this->simpleMode) {
+            $query->where('severity', '!=', 'LOW')
+                ->orWhere(function ($q) {
+                    $q->where('severity', 'LOW')
+                        ->whereNotIn('type', ['PASSWORD_POLICY_SCAN', 'DATA_RETENTION_SCAN']);
+                });
+        }
+
         return view('compliance::livewire.security-dashboard', [
             'logs' => $query->latest()->paginate(20),
             'ips' => IpReputation::orderByDesc('score')->limit(15)->get(),
@@ -182,6 +259,7 @@ class SecurityDashboard extends Component
             'alerts' => $alerts,
             'complianceHealth' => $this->complianceHealth,
             'complianceTrend' => $this->getComplianceTrendData(),
+            'executiveSummary' => $this->getExecutiveSummary(),
         ]);
     }
 }
