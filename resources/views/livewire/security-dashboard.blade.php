@@ -224,9 +224,9 @@
                                 <td class="py-3 px-2">
                                     <span
                                         class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold
-                                                                        {{ $log->severity === 'HIGH' ? 'bg-red-100 text-red-700' : '' }}
-                                                                        {{ $log->severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' : '' }}
-                                                                        {{ $log->severity === 'LOW' ? 'bg-green-100 text-green-700' : '' }}">
+                                                                {{ $log->severity === 'HIGH' ? 'bg-red-100 text-red-700' : '' }}
+                                                                {{ $log->severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' : '' }}
+                                                                {{ $log->severity === 'LOW' ? 'bg-green-100 text-green-700' : '' }}">
                                         {{ $log->severity }}
                                     </span>
                                 </td>
