@@ -107,6 +107,14 @@
                         class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-sm hover:bg-indigo-200 transition">
                         🔄 Run Checks Now
                     </button>
+
+                    @if(config('compliance.allow_deep_password_scan', false))
+                        <button wire:click="runDeepScan"
+                            class="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm hover:bg-purple-200 transition">
+                            🧠 Deep Password Audit
+                        </button>
+                    @endif
+
                     <span
                         class="text-sm px-3 py-1 rounded-full {{ $complianceHealth['score'] >= 80 ? 'bg-green-100 text-green-700' : ($complianceHealth['score'] >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
                         Score: {{ $complianceHealth['score'] }} / 100 (Grade {{ $complianceHealth['grade'] }})
@@ -214,10 +222,11 @@
                                 </td>
                                 <td class="py-3 px-2 font-mono font-bold">{{ $log->score }}</td>
                                 <td class="py-3 px-2">
-                                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold
-                                                    {{ $log->severity === 'HIGH' ? 'bg-red-100 text-red-700' : '' }}
-                                                    {{ $log->severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' : '' }}
-                                                    {{ $log->severity === 'LOW' ? 'bg-green-100 text-green-700' : '' }}">
+                                    <span
+                                        class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold
+                                                                        {{ $log->severity === 'HIGH' ? 'bg-red-100 text-red-700' : '' }}
+                                                                        {{ $log->severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' : '' }}
+                                                                        {{ $log->severity === 'LOW' ? 'bg-green-100 text-green-700' : '' }}">
                                         {{ $log->severity }}
                                     </span>
                                 </td>

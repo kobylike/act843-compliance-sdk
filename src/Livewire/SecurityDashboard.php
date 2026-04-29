@@ -15,6 +15,7 @@ use Livewire\Attributes\On;
 class SecurityDashboard extends Component
 {
     use WithPagination;
+    use WithPagination;
 
     public $filterSeverity = '';
     public $filterType = '';
@@ -69,6 +70,21 @@ class SecurityDashboard extends Component
         Artisan::call('compliance:scan-retention');
         $this->loadComplianceHealth();
         $this->dispatch('notify', 'Compliance scans completed', 'success');
+    }
+
+    /**
+     * Run a deep password scan (sampling). Only available if ALLOW_DEEP_PASSWORD_SCAN=true in .env.
+     */
+    public function runDeepScan()
+    {
+        if (!config('compliance.allow_deep_password_scan', false)) {
+            $this->dispatch('notify', 'Deep scanning is disabled. Set ALLOW_DEEP_PASSWORD_SCAN=true in .env', 'error');
+            return;
+        }
+
+        Artisan::call('compliance:scan-passwords', ['--deep' => true]);
+        $this->loadComplianceHealth();
+        $this->dispatch('notify', 'Deep password scan completed. Check threat table for weak hashes.', 'success');
     }
 
     #[On('echo:security,AlertEvent')]

@@ -1,9 +1,8 @@
 <?php
 
-namespace GhanaCompliance\Act843SDK\Console\Commands;
+namespace GhanaCompliance\Act843SDK\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 
 class ComplianceInstallCommand extends Command
@@ -15,71 +14,48 @@ class ComplianceInstallCommand extends Command
     {
         $this->info('🚀 Installing Compliance SDK...');
 
-        // 1. Publish config (copy from our stub)
         $this->publishConfig();
-
-        // 2. Publish & run migrations (they already exist, but we ensure they are run)
         $this->runMigrations();
-
-        // 3. Register event listener in AppServiceProvider
         $this->registerEventListener();
-
-        // 4. Optionally add middleware
+        $this->registerProactivePasswordCheck();  // NEW
         $this->addMiddleware();
-
-        // 5. Optionally add dashboard routes
         $this->addRoutes();
-
-        // 6. Set environment variables
         $this->setupEnv();
-
-        // 7. Show next steps
         $this->showNextSteps();
 
         return self::SUCCESS;
     }
 
-    /**
-     * Publish the compliance config file.
-     */
     protected function publishConfig(): void
     {
         $target = config_path('compliance.php');
-        if (File::exists($target)) {
-            if (!$this->confirm('Config file already exists. Overwrite?', false)) {
-                $this->info('Skipped config file.');
-                return;
-            }
+        if (File::exists($target) && !$this->confirm('Config file already exists. Overwrite?', false)) {
+            $this->info('Skipped config file.');
+            return;
         }
-
-        // If we have a stub in the package, copy it; otherwise create a default.
-        $stub = __DIR__ . '/../../../stubs/compliance.stub';
-        if (File::exists($stub)) {
-            File::copy($stub, $target);
-        } else {
-            // Create a default config file
-            $defaultConfig = $this->getDefaultConfig();
-            File::put($target, $defaultConfig);
-        }
+        $defaultConfig = $this->getDefaultConfig();
+        File::put($target, $defaultConfig);
         $this->info('✅ Config published to config/compliance.php');
     }
 
-    /**
-     * Run migrations (they are already in database/migrations).
-     */
     protected function runMigrations(): void
     {
+        $this->call('vendor:publish', ['--tag' => 'compliance-migrations', '--force' => true]);
+        $this->info('✅ Migrations published.');
+
         if ($this->confirm('Run compliance migrations now?', true)) {
-            $this->call('migrate');
-            $this->info('✅ Migrations executed.');
+            try {
+                $this->call('migrate', ['--force' => true]);
+                $this->info('✅ Migrations executed.');
+            } catch (\Exception $e) {
+                $this->warn('Migrations failed: ' . $e->getMessage());
+                $this->warn('Please run "php artisan migrate" manually.');
+            }
         } else {
             $this->warn('Please run migrations later: php artisan migrate');
         }
     }
 
-    /**
-     * Register the FailedLogin event listener in AppServiceProvider.
-     */
     protected function registerEventListener(): void
     {
         $providerPath = app_path('Providers/AppServiceProvider.php');
@@ -89,25 +65,30 @@ class ComplianceInstallCommand extends Command
         }
 
         $content = File::get($providerPath);
-        $listenerRegistration = "\n        Event::listen(\n            \\Illuminate\\Auth\\Events\\Failed::class,\n            \\App\\Listeners\\LogFailedLoginAttempt::class\n        );";
+        $useStatement = "use GhanaCompliance\\Act843SDK\\Listeners\\LogFailedLoginAttempt;";
+        $listenerRegistration = <<<PHP
+
+        Event::listen(
+            \\Illuminate\\Auth\\Events\\Failed::class,
+            LogFailedLoginAttempt::class
+        );
+PHP;
 
         if (!str_contains($content, 'LogFailedLoginAttempt')) {
-            // Ensure Event facade is imported
-            if (!str_contains($content, 'use Illuminate\Support\Facades\Event;')) {
+            if (!str_contains($content, $useStatement)) {
                 $content = str_replace(
                     'use Illuminate\Support\ServiceProvider;',
-                    "use Illuminate\Support\ServiceProvider;\nuse Illuminate\Support\Facades\Event;",
+                    "use Illuminate\Support\ServiceProvider;\nuse Illuminate\Support\Facades\Event;\n$useStatement",
                     $content
                 );
             }
-            // Insert listener registration inside boot() method
             $pattern = '/public function boot\(\)\s*\{\s*/';
             if (preg_match($pattern, $content)) {
                 $newContent = preg_replace($pattern, "$0$listenerRegistration\n", $content);
                 File::put($providerPath, $newContent);
                 $this->info('✅ Event listener registered in AppServiceProvider.');
             } else {
-                $this->warn('Could not automatically register listener. Please add manually:');
+                $this->warn('Could not auto-register listener. Please add manually:');
                 $this->line($listenerRegistration);
             }
         } else {
@@ -116,43 +97,92 @@ class ComplianceInstallCommand extends Command
     }
 
     /**
-     * Add the request tracking middleware to Kernel.php (optional).
+     * NEW: Register the proactive password hash detection listener.
      */
+    protected function registerProactivePasswordCheck(): void
+    {
+        if (!$this->confirm('Enable proactive password hash detection? (recommended)', true)) {
+            return;
+        }
+
+        $providerPath = app_path('Providers/AppServiceProvider.php');
+        if (!File::exists($providerPath)) {
+            $this->warn('AppServiceProvider not found. Please add manually:');
+            $this->line("In the boot() method, add:\n\nuse App\\Models\\User;\nuse GhanaCompliance\\Act843SDK\\Listeners\\CheckPasswordHash;\n\nUser::saved(function (\$user) {\n    app(CheckPasswordHash::class)->handle(\$user);\n});");
+            return;
+        }
+
+        $content = File::get($providerPath);
+        $useUserModel = "use App\\Models\\User;";
+        $useListener = "use GhanaCompliance\\Act843SDK\\Listeners\\CheckPasswordHash;";
+        $registrationCode = <<<PHP
+
+        // Proactive password hash detection (real-time)
+        if (config('compliance.proactive_password_check', true)) {
+            User::saved(function (\$user) {
+                app(CheckPasswordHash::class)->handle(\$user);
+            });
+        }
+PHP;
+
+        if (!str_contains($content, 'CheckPasswordHash')) {
+            // Add use statements if missing
+            if (!str_contains($content, $useUserModel)) {
+                // Insert after namespace
+                if (preg_match('/^namespace .+;$/m', $content, $matches)) {
+                    $pos = strpos($content, $matches[0]) + strlen($matches[0]);
+                    $content = substr_replace($content, "\n\n$useUserModel\n$useListener", $pos, 0);
+                }
+            } elseif (!str_contains($content, $useListener)) {
+                $content = str_replace($useUserModel, "$useUserModel\n$useListener", $content);
+            }
+
+            // Insert registration code inside boot()
+            $pattern = '/public function boot\(\)\s*\{\s*/';
+            if (preg_match($pattern, $content)) {
+                $newContent = preg_replace($pattern, "$0$registrationCode\n", $content);
+                File::put($providerPath, $newContent);
+                $this->info('✅ Proactive password detection registered in AppServiceProvider.');
+            } else {
+                $this->warn('Could not auto-register proactive check. Please add manually:');
+                $this->line($registrationCode);
+            }
+        } else {
+            $this->info('Proactive password detection already registered.');
+        }
+    }
+
     protected function addMiddleware(): void
     {
-        if (!$this->confirm('Add request tracking middleware to web group? (recommended)', true)) {
+        if (!$this->confirm('Add request tracking middleware? (recommended)', true)) {
             return;
         }
 
-        $kernelPath = app_path('Http/Kernel.php');
-        if (!File::exists($kernelPath)) {
-            $this->warn('Kernel.php not found. Add middleware manually:');
-            $this->line('\\App\\Http\\Middleware\\TrackSecurityEvents::class');
+        $bootstrapPath = base_path('bootstrap/app.php');
+        if (!File::exists($bootstrapPath)) {
+            $this->warn('bootstrap/app.php not found. Please add middleware manually:');
+            $this->line('$middleware->web(append: [\\GhanaCompliance\\Act843SDK\\Middleware\\TrackSecurityEvents::class])');
             return;
         }
 
-        $content = File::get($kernelPath);
-        $middlewareLine = '\\App\\Http\\Middleware\\TrackSecurityEvents::class,';
+        $content = File::get($bootstrapPath);
+        $middlewareLine = '\\GhanaCompliance\\Act843SDK\\Middleware\\TrackSecurityEvents::class';
         if (!str_contains($content, $middlewareLine)) {
-            // Add to the web middleware group
-            $pattern = "/'web' => \[\n(.*?)\n\s*\],/s";
-            if (preg_match($pattern, $content, $matches)) {
-                $newGroup = str_replace($matches[1], "        $middlewareLine\n$matches[1]", $matches[0]);
-                $content = str_replace($matches[0], $newGroup, $content);
-                File::put($kernelPath, $content);
-                $this->info('✅ Middleware added to web group.');
+            $pattern = '/->withMiddleware\(function \(Middleware \$middleware\): void \{\s*/';
+            $replacement = "$0        \$middleware->web(append: [$middlewareLine]);\n";
+            if (preg_match($pattern, $content)) {
+                $newContent = preg_replace($pattern, $replacement, $content);
+                File::put($bootstrapPath, $newContent);
+                $this->info('✅ Middleware added to bootstrap/app.php');
             } else {
                 $this->warn('Could not auto-add middleware. Please add manually:');
-                $this->line($middlewareLine);
+                $this->line("Add within the `withMiddleware` closure: \$middleware->web(append: [$middlewareLine]);");
             }
         } else {
             $this->info('Middleware already present.');
         }
     }
 
-    /**
-     * Add dashboard routes to web.php (optional).
-     */
     protected function addRoutes(): void
     {
         if (!$this->confirm('Add compliance dashboard routes? (requires Livewire)', true)) {
@@ -163,8 +193,8 @@ class ComplianceInstallCommand extends Command
         $routeCode = "
 // Compliance SDK routes (detection-only dashboard)
 Route::middleware(['auth'])->group(function () {
-    Route::get('/security-dashboard', \\App\\Livewire\\SecurityDashboard::class)->name('compliance.dashboard');
-    Route::get('/ip/{ip}', \\App\\Livewire\\IpProfile::class)->name('compliance.ip.profile');
+    Route::get('/security-dashboard', \\GhanaCompliance\\Act843SDK\\Livewire\\SecurityDashboard::class)->name('compliance.dashboard');
+    Route::get('/ip/{ip}', \\GhanaCompliance\\Act843SDK\\Livewire\\IpProfile::class)->name('compliance.ip.profile');
 });
 ";
         $content = File::get($routesPath);
@@ -176,9 +206,6 @@ Route::middleware(['auth'])->group(function () {
         }
     }
 
-    /**
-     * Add recommended environment variables.
-     */
     protected function setupEnv(): void
     {
         $envPath = base_path('.env');
@@ -195,6 +222,7 @@ Route::middleware(['auth'])->group(function () {
             'PASSWORD_MIN_LENGTH' => '12',
             'PASSWORD_COMPLEXITY' => 'true',
             'ALLOW_DEEP_PASSWORD_SCAN' => 'false',
+            'COMPLIANCE_PROACTIVE_PASSWORD_CHECK' => 'true',
         ];
 
         foreach ($vars as $key => $value) {
@@ -219,14 +247,11 @@ Route::middleware(['auth'])->group(function () {
         $this->line('📌 Next steps:');
         $this->line('  1. Run: php artisan compliance:scan-passwords');
         $this->line('  2. Run: php artisan compliance:scan-retention');
-        $this->line('  3. Visit /security-dashboard to see the dashboard (if you added routes)');
+        $this->line('  3. Visit /security-dashboard to see the dashboard (login required)');
         $this->newLine();
         $this->line('🔒 Detection only – no IP blocking, no enforcement.');
     }
 
-    /**
-     * Return the default configuration content.
-     */
     protected function getDefaultConfig(): string
     {
         return <<<'PHP'
@@ -246,6 +271,9 @@ return [
     'evaluation' => [
         'simulation_ips' => ['127.0.0.100', '127.0.0.101'],
     ],
+    'report_email' => env('COMPLIANCE_REPORT_EMAIL', 'admin@example.com'),
+    'anomaly_detection' => env('COMPLIANCE_ANOMALY_DETECTION', false),
+    'proactive_password_check' => env('COMPLIANCE_PROACTIVE_PASSWORD_CHECK', true),
 ];
 PHP;
     }
