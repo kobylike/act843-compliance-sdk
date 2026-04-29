@@ -19,4 +19,5 @@ return [
     'report_email' => env('COMPLIANCE_REPORT_EMAIL', 'kobylike2@gmail.com'),
     'anomaly_detection' => env('COMPLIANCE_ANOMALY_DETECTION', false),
     'privilege_escalation_detection' => env('COMPLIANCE_PRIVILEGE_DETECTION', true),
+    'proactive_password_check' => env('COMPLIANCE_PROACTIVE_PASSWORD_CHECK', true),
 ];

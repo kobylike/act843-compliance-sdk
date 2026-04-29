@@ -3,7 +3,6 @@
 namespace GhanaCompliance\Act843SDK\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 
 class ComplianceInstallCommand extends Command
@@ -18,6 +17,7 @@ class ComplianceInstallCommand extends Command
         $this->publishConfig();
         $this->runMigrations();
         $this->registerEventListener();
+        $this->registerProactivePasswordCheck();  // NEW
         $this->addMiddleware();
         $this->addRoutes();
         $this->setupEnv();
@@ -75,7 +75,6 @@ class ComplianceInstallCommand extends Command
 PHP;
 
         if (!str_contains($content, 'LogFailedLoginAttempt')) {
-            // Add use statement after namespace
             if (!str_contains($content, $useStatement)) {
                 $content = str_replace(
                     'use Illuminate\Support\ServiceProvider;',
@@ -83,7 +82,6 @@ PHP;
                     $content
                 );
             }
-            // Insert listener inside boot()
             $pattern = '/public function boot\(\)\s*\{\s*/';
             if (preg_match($pattern, $content)) {
                 $newContent = preg_replace($pattern, "$0$listenerRegistration\n", $content);
@@ -95,6 +93,62 @@ PHP;
             }
         } else {
             $this->info('Event listener already registered.');
+        }
+    }
+
+    /**
+     * NEW: Register the proactive password hash detection listener.
+     */
+    protected function registerProactivePasswordCheck(): void
+    {
+        if (!$this->confirm('Enable proactive password hash detection? (recommended)', true)) {
+            return;
+        }
+
+        $providerPath = app_path('Providers/AppServiceProvider.php');
+        if (!File::exists($providerPath)) {
+            $this->warn('AppServiceProvider not found. Please add manually:');
+            $this->line("In the boot() method, add:\n\nuse App\\Models\\User;\nuse GhanaCompliance\\Act843SDK\\Listeners\\CheckPasswordHash;\n\nUser::saved(function (\$user) {\n    app(CheckPasswordHash::class)->handle(\$user);\n});");
+            return;
+        }
+
+        $content = File::get($providerPath);
+        $useUserModel = "use App\\Models\\User;";
+        $useListener = "use GhanaCompliance\\Act843SDK\\Listeners\\CheckPasswordHash;";
+        $registrationCode = <<<PHP
+
+        // Proactive password hash detection (real-time)
+        if (config('compliance.proactive_password_check', true)) {
+            User::saved(function (\$user) {
+                app(CheckPasswordHash::class)->handle(\$user);
+            });
+        }
+PHP;
+
+        if (!str_contains($content, 'CheckPasswordHash')) {
+            // Add use statements if missing
+            if (!str_contains($content, $useUserModel)) {
+                // Insert after namespace
+                if (preg_match('/^namespace .+;$/m', $content, $matches)) {
+                    $pos = strpos($content, $matches[0]) + strlen($matches[0]);
+                    $content = substr_replace($content, "\n\n$useUserModel\n$useListener", $pos, 0);
+                }
+            } elseif (!str_contains($content, $useListener)) {
+                $content = str_replace($useUserModel, "$useUserModel\n$useListener", $content);
+            }
+
+            // Insert registration code inside boot()
+            $pattern = '/public function boot\(\)\s*\{\s*/';
+            if (preg_match($pattern, $content)) {
+                $newContent = preg_replace($pattern, "$0$registrationCode\n", $content);
+                File::put($providerPath, $newContent);
+                $this->info('✅ Proactive password detection registered in AppServiceProvider.');
+            } else {
+                $this->warn('Could not auto-register proactive check. Please add manually:');
+                $this->line($registrationCode);
+            }
+        } else {
+            $this->info('Proactive password detection already registered.');
         }
     }
 
@@ -122,7 +176,7 @@ PHP;
                 $this->info('✅ Middleware added to bootstrap/app.php');
             } else {
                 $this->warn('Could not auto-add middleware. Please add manually:');
-                $this->line("Add within the `withMiddleware` closure: \$middleware->web(append: [$middlewareLine::class]);");
+                $this->line("Add within the `withMiddleware` closure: \$middleware->web(append: [$middlewareLine]);");
             }
         } else {
             $this->info('Middleware already present.');
@@ -137,12 +191,12 @@ PHP;
 
         $routesPath = base_path('routes/web.php');
         $routeCode = "
-        // Compliance SDK routes (detection-only dashboard)
-        Route::middleware(['auth'])->group(function () {
-            Route::get('/security-dashboard', \\GhanaCompliance\\Act843SDK\\Livewire\\SecurityDashboard::class)->name('compliance.dashboard');
-            Route::get('/ip/{ip}', \\GhanaCompliance\\Act843SDK\\Livewire\\IpProfile::class)->name('compliance.ip.profile');
-        });
-        ";
+// Compliance SDK routes (detection-only dashboard)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/security-dashboard', \\GhanaCompliance\\Act843SDK\\Livewire\\SecurityDashboard::class)->name('compliance.dashboard');
+    Route::get('/ip/{ip}', \\GhanaCompliance\\Act843SDK\\Livewire\\IpProfile::class)->name('compliance.ip.profile');
+});
+";
         $content = File::get($routesPath);
         if (!str_contains($content, 'security-dashboard')) {
             File::append($routesPath, $routeCode);
@@ -168,6 +222,7 @@ PHP;
             'PASSWORD_MIN_LENGTH' => '12',
             'PASSWORD_COMPLEXITY' => 'true',
             'ALLOW_DEEP_PASSWORD_SCAN' => 'false',
+            'COMPLIANCE_PROACTIVE_PASSWORD_CHECK' => 'true',
         ];
 
         foreach ($vars as $key => $value) {
@@ -216,6 +271,9 @@ return [
     'evaluation' => [
         'simulation_ips' => ['127.0.0.100', '127.0.0.101'],
     ],
+    'report_email' => env('COMPLIANCE_REPORT_EMAIL', 'admin@example.com'),
+    'anomaly_detection' => env('COMPLIANCE_ANOMALY_DETECTION', false),
+    'proactive_password_check' => env('COMPLIANCE_PROACTIVE_PASSWORD_CHECK', true),
 ];
 PHP;
     }
