@@ -2,12 +2,13 @@
 
 namespace GhanaCompliance\Act843SDK\Http\Controllers;
 
-use App\Models\ComplianceLog;
-use App\Models\IpReputation;
-use App\Services\ComplianceHealthService;
+use GhanaCompliance\Act843SDK\Models\ComplianceLog;
+use GhanaCompliance\Act843SDK\Models\IpReputation;
+use GhanaCompliance\Act843SDK\Services\ComplianceHealthService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+
 
 class ComplianceReportController
 {
