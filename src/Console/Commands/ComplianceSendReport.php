@@ -29,6 +29,7 @@ class ComplianceSendReport extends Command
         $end = Carbon::parse($date)->endOfDay();
 
         $logs = ComplianceLog::whereBetween('created_at', [$start, $end])->get();
+        $attackTypes = $logs->groupBy('type')->map->count();
         $failedLogins = $logs->where('type', 'BRUTE_FORCE')->count();
         $highRiskIps = IpReputation::where('score', '>=', 80)->count();
         $avgRiskScore = round($logs->avg('score') ?? 0, 1);
@@ -47,6 +48,7 @@ class ComplianceSendReport extends Command
             'extra_metrics' => [
                 'total_logs' => $logs->count(),
                 'unique_ips' => $logs->unique('ip_address')->count(),
+                'attack_types' => $attackTypes,
             ],
         ];
 
