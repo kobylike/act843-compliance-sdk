@@ -1,6 +1,6 @@
 <?php
 
-namespace GhanaCompliance\Act843SDK\Commands;
+namespace GhanaCompliance\Act843SDK\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
