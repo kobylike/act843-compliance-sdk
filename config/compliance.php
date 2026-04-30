@@ -20,4 +20,6 @@ return [
     'anomaly_detection' => env('COMPLIANCE_ANOMALY_DETECTION', false),
     'privilege_escalation_detection' => env('COMPLIANCE_PRIVILEGE_DETECTION', true),
     'proactive_password_check' => env('COMPLIANCE_PROACTIVE_PASSWORD_CHECK', true),
+    'regulator_api_url' => env('COMPLIANCE_REGULATOR_API_URL'),
+    'regulator_api_key' => env('COMPLIANCE_REGULATOR_API_KEY'),
 ];
