@@ -19,13 +19,15 @@ class ComplianceServiceProvider extends ServiceProvider
     {
         // Register commands for both web and console
         $this->commands([
-            \GhanaCompliance\Act843SDK\Console\Commands\ComplianceInstallCommand::class,
+
             \GhanaCompliance\Act843SDK\Console\Commands\ComplianceScanPasswords::class,
             \GhanaCompliance\Act843SDK\Console\Commands\ComplianceScanRetention::class,
             \GhanaCompliance\Act843SDK\Console\Commands\CompliancePurgeOldLogs::class,
             \GhanaCompliance\Act843SDK\Console\Commands\ComplianceWeeklyReport::class,
             \GhanaCompliance\Act843SDK\Console\Commands\ComplianceEvaluate::class,
             \GhanaCompliance\Act843SDK\Console\Commands\DecayIpReputations::class,
+            \GhanaCompliance\Act843SDK\Console\Commands\ComplianceSendReport::class,
+            \GhanaCompliance\Act843SDK\Console\Commands\ComplianceInstallCommand::class,
         ]);
 
         if ($this->app->runningInConsole()) {
