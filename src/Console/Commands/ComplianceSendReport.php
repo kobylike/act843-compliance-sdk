@@ -2,9 +2,9 @@
 
 namespace GhanaCompliance\Act843SDK\Console\Commands;
 
-use App\Models\ComplianceLog;
-use App\Models\IpReputation;
-use App\Services\ComplianceHealthService;
+use GhanaCompliance\Act843SDK\Models\ComplianceLog;
+use GhanaCompliance\Act843SDK\Models\IpReputation;
+use GhanaCompliance\Act843SDK\Services\ComplianceHealthService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
