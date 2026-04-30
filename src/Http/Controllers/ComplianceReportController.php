@@ -5,7 +5,7 @@ namespace GhanaCompliance\Act843SDK\Http\Controllers;
 use GhanaCompliance\Act843SDK\Models\ComplianceLog;
 use GhanaCompliance\Act843SDK\Models\IpReputation;
 use GhanaCompliance\Act843SDK\Services\ComplianceHealthService;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\PDF;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -33,7 +33,7 @@ class ComplianceReportController
         ];
 
         $data = compact('from', 'to', 'stats', 'topIps', 'health', 'type');
-        $pdf = app('dompdf.wrapper')->loadView('compliance.report', $data);
+        $pdf = app('dompdf.wrapper')->loadView('compliance::report', $data);
         $pdf->setPaper('A4', 'portrait');
 
         return $pdf->download('compliance_report_' . now()->format('Ymd_His') . '.pdf');
