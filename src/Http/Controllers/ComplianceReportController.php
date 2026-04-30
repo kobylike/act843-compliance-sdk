@@ -33,8 +33,7 @@ class ComplianceReportController
         ];
 
         $data = compact('from', 'to', 'stats', 'topIps', 'health', 'type');
-
-        $pdf = Pdf::loadView('compliance.report', $data);
+        $pdf = app('dompdf.wrapper')->loadView('compliance.report', $data);
         $pdf->setPaper('A4', 'portrait');
 
         return $pdf->download('compliance_report_' . now()->format('Ymd_His') . '.pdf');
