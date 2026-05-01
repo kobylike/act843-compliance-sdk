@@ -27,7 +27,12 @@ class SecurityDashboard extends Component
     public $complianceHealth = [];
 
     protected $listeners = ['refreshDashboard' => 'loadStats'];
+    public $showFixModal = false;
 
+    public function toggleFixModal()
+    {
+        $this->showFixModal = !$this->showFixModal;
+    }
     public function mount()
     {
         $this->loadStats();

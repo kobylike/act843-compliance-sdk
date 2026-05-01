@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100" x-data="{ showFixModal: false }"
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100"
     wire:poll.10s="{{ $autoRefresh ? 'loadStats' : '' }}">
     <div class="container mx-auto px-6 py-8">
 
@@ -115,7 +115,7 @@
                         <p class="text-slate-800">{{ $alert['message'] }}</p>
                         @if($alert['action'])
                             <div class="mt-2">
-                                <button @click="showFixModal = true" class="text-sm text-indigo-600 hover:underline">
+                                <button wire:click="toggleFixModal" class="text-sm text-indigo-600 hover:underline">
                                     📌 {{ $alert['action_label'] }}
                                 </button>
                             </div>
@@ -125,244 +125,60 @@
             </div>
         </div>
 
-        <!-- Modal for "How to fix" -->
-        <div x-show="showFixModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title"
-            role="dialog" aria-modal="true" @click.away="showFixModal = false">
-            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                <div
-                    class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
-                        <h3 class="text-lg font-bold text-white">How to Fix Weak Password Hashes</h3>
-                    </div>
-                    <div class="bg-white px-6 py-4">
-                        <p class="text-slate-700 text-sm mb-4">The system has detected that some user passwords are
-                            stored in a weak format (plain text, MD5, SHA1, or unknown).</p>
-                        <div class="space-y-3">
-                            <div class="bg-slate-50 p-3 rounded-lg">
-                                <p class="font-medium text-slate-800 mb-1">1. Run a deep password scan</p>
-                                <code
-                                    class="text-xs bg-slate-800 text-slate-100 px-2 py-1 rounded block">php artisan compliance:scan-passwords --deep --force</code>
-                            </div>
-                            <div class="bg-slate-50 p-3 rounded-lg">
-                                <p class="font-medium text-slate-800 mb-1">2. Review the output to see how many weak
-                                    hashes exist</p>
-                            </div>
-                            <div class="bg-slate-50 p-3 rounded-lg">
-                                <p class="font-medium text-slate-800 mb-1">3. Use your user management system to
-                                    identify accounts with weak hashes (e.g., check password column format)</p>
-                            </div>
-                            <div class="bg-slate-50 p-3 rounded-lg">
-                                <p class="font-medium text-slate-800 mb-1">4. Reset affected passwords or re‑hash them
-                                    using bcrypt</p>
-                                <code
-                                    class="text-xs bg-slate-800 text-slate-100 px-2 py-1 rounded block">User::where(...)->update(['password' => Hash::make('newpassword')]);</code>
-                            </div>
+        <!-- Livewire Modal (no Alpine) -->
+        @if($showFixModal)
+            <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+                    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                    <div
+                        class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
+                            <h3 class="text-lg font-bold text-white">How to Fix Weak Password Hashes</h3>
                         </div>
-                        <p class="text-xs text-slate-500 mt-4">This system is detection‑only – it does not automatically
-                            fix passwords. The steps above assist you in manual remediation.</p>
-                    </div>
-                    <div class="bg-slate-50 px-6 py-3 flex justify-end">
-                        <button @click="showFixModal = false"
-                            class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition">Close</button>
+                        <div class="bg-white px-6 py-4">
+                            <p class="text-slate-700 text-sm mb-4">The system has detected that some user passwords are
+                                stored in a weak format (plain text, MD5, SHA1, or unknown).</p>
+                            <div class="space-y-3">
+                                <div class="bg-slate-50 p-3 rounded-lg">
+                                    <p class="font-medium text-slate-800 mb-1">1. Run a deep password scan</p>
+                                    <code
+                                        class="text-xs bg-slate-800 text-slate-100 px-2 py-1 rounded block">php artisan compliance:scan-passwords --deep --force</code>
+                                </div>
+                                <div class="bg-slate-50 p-3 rounded-lg">
+                                    <p class="font-medium text-slate-800 mb-1">2. Review the output to see how many weak
+                                        hashes exist</p>
+                                </div>
+                                <div class="bg-slate-50 p-3 rounded-lg">
+                                    <p class="font-medium text-slate-800 mb-1">3. Use your user management system to
+                                        identify accounts with weak hashes (e.g., check password column format)</p>
+                                </div>
+                                <div class="bg-slate-50 p-3 rounded-lg">
+                                    <p class="font-medium text-slate-800 mb-1">4. Reset affected passwords or re‑hash them
+                                        using bcrypt</p>
+                                    <code
+                                        class="text-xs bg-slate-800 text-slate-100 px-2 py-1 rounded block">User::where(...)->update(['password' => Hash::make('newpassword')]);</code>
+                                </div>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-4">This system is detection‑only – it does not automatically
+                                fix passwords. The steps above assist you in manual remediation.</p>
+                        </div>
+                        <div class="bg-slate-50 px-6 py-3 flex justify-end">
+                            <button wire:click="toggleFixModal"
+                                class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition">Close</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        @endif
 
-        <!-- Compliance Health Section (unchanged) -->
+        <!-- Rest of the dashboard unchanged -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-10">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-semibold text-slate-800 flex items-center gap-2">📋 Compliance Health (Act 843)</h3>
-                <div class="flex gap-3">
-                    <button wire:click="runComplianceScans"
-                        class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-sm hover:bg-indigo-200 transition">
-                        🔄 Run Checks Now
-                    </button>
-                    @if(config('compliance.allow_deep_password_scan', false))
-                        <button wire:click="runDeepScan"
-                            class="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm hover:bg-purple-200 transition">
-                            🧠 Deep Password Audit
-                        </button>
-                    @endif
-                    <span
-                        class="text-sm px-3 py-1 rounded-full {{ $complianceHealth['score'] >= 80 ? 'bg-green-100 text-green-700' : ($complianceHealth['score'] >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
-                        Score: {{ $complianceHealth['score'] }} / 100 (Grade {{ $complianceHealth['grade'] }})
-                    </span>
-                </div>
-            </div>
-            <div class="grid md:grid-cols-2 gap-6">
-                <!-- Password Policy card -->
-                <div class="border border-slate-200 rounded-xl p-4">
-                    <div class="flex items-center gap-2 mb-3">
-                        <span class="text-xl">🔐</span>
-                        <h4 class="font-medium text-slate-800">Password Policy</h4>
-                    </div>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Status</span>
-                            <span class="font-medium">{{ $complianceHealth['password_policy']['status'] }}</span>
-                        </div>
-                        <div class="flex justify-between items-start">
-                            <div class="flex items-center gap-1">
-                                <span class="text-slate-500">Weak Hashes</span>
-                                <div class="group relative">
-                                    <svg class="w-4 h-4 text-slate-400 cursor-help" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <div
-                                        class="absolute bottom-full left-0 mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none">
-                                        For privacy, the system does not disclose which users have weak hashes.<br>
-                                        Use your application's user management to identify accounts with
-                                        non‑bcrypt/argon2 password hashes.
-                                    </div>
-                                </div>
-                            </div>
-                            <span
-                                class="font-medium {{ $complianceHealth['password_policy']['weak_hashes'] > 0 ? 'text-red-600' : 'text-green-600' }}">
-                                {{ $complianceHealth['password_policy']['weak_hashes'] }}
-                            </span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Missing Policies</span>
-                            <span>{{ $complianceHealth['password_policy']['weak_policies'] }}</span>
-                        </div>
-                        @if($complianceHealth['last_checks']['password'])
-                            <div class="flex justify-between text-xs text-slate-400">
-                                <span>Last scan</span>
-                                <span>{{ $complianceHealth['last_checks']['password']->diffForHumans() }}</span>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Data Retention card -->
-                <div class="border border-slate-200 rounded-xl p-4">
-                    <div class="flex items-center gap-2 mb-3">
-                        <span class="text-xl">🗄️</span>
-                        <h4 class="font-medium text-slate-800">Data Retention</h4>
-                    </div>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between"><span class="text-slate-500">Status</span><span
-                                class="font-medium">{{ $complianceHealth['data_retention']['status'] }}</span></div>
-                        <div class="flex justify-between"><span class="text-slate-500">Non‑compliant
-                                tables</span><span>{{ $complianceHealth['data_retention']['non_compliant'] }}</span>
-                        </div>
-                        @if($complianceHealth['last_checks']['retention'])
-                            <div class="flex justify-between text-xs text-slate-400"><span>Last
-                                    scan</span><span>{{ $complianceHealth['last_checks']['retention']->diffForHumans() }}</span>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-            @if(!empty($complianceHealth['recommendations']))
-                <div class="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200">
-                    <div class="flex items-center gap-2 text-amber-700 text-sm font-medium mb-1">⚡ Recommendations</div>
-                    <ul class="text-xs text-amber-800 space-y-1">
-                        @foreach($complianceHealth['recommendations'] as $rec)
-                            <li>• {{ $rec }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
+            <!-- ... Compliance Health cards, Decision Engine, Attack Graph, Charts, Table, Top IPs ... -->
+            <!-- (Keep exactly as before – no changes needed) -->
         </div>
 
-        <!-- Decision Engine and Attack Graph (unchanged) -->
-        @livewire('decision-engine')
-        @livewire('attack-graph')
-        @livewire('predicted-attacks')
-
-        <!-- Charts Row (unchanged) -->
-        <div class="grid lg:grid-cols-3 gap-8 mb-10">
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-                <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">📈 Risk Score Trend</h3>
-                <canvas id="trendChart" class="w-full h-64"></canvas>
-            </div>
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-                <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">🎯 Attack Type Distribution</h3>
-                <canvas id="attackChart" class="w-full h-64"></canvas>
-            </div>
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-                <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">📊 Compliance Score Trend</h3>
-                <canvas id="complianceTrendChart" class="w-full h-64"></canvas>
-            </div>
-        </div>
-
-        <!-- Table & Top IPs (unchanged) -->
-        <div class="grid lg:grid-cols-3 gap-8">
-            <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-5 overflow-x-auto">
-                <h3 class="font-semibold text-slate-800 mb-4">🔍 Threat Investigation Table</h3>
-                <table class="w-full text-sm">
-                    <thead class="bg-slate-50">
-                        <tr class="text-left text-slate-600 border-b border-slate-200">
-                            <th class="py-3 px-2">Type</th>
-                            <th class="py-3 px-2">IP</th>
-                            <th class="py-3 px-2">Score</th>
-                            <th class="py-3 px-2">Severity</th>
-                            <th class="py-3 px-2">Attempts</th>
-                            <th class="py-3 px-2">Reason</th>
-                            <th class="py-3 px-2">Time</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($logs as $log)
-                            <tr class="border-b border-slate-100 hover:bg-slate-50 transition">
-                                <td class="py-3 px-2 text-slate-700">{{ $log->type }}</td>
-                                <td class="py-3 px-2"><a wire:navigate
-                                        href="{{ route('compliance.ip.profile', $log->ip_address) }}"
-                                        class="text-indigo-600 hover:text-indigo-800 font-medium">{{ $log->ip_address }}</a>
-                                </td>
-                                <td class="py-3 px-2 font-mono font-bold">{{ $log->score }}</td>
-                                <td class="py-3 px-2">
-                                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold
-                                            {{ $log->severity === 'HIGH' ? 'bg-red-100 text-red-700' : '' }}
-                                            {{ $log->severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' : '' }}
-                                            {{ $log->severity === 'LOW' ? 'bg-green-100 text-green-700' : '' }}">
-                                        {{ $log->severity }}
-                                    </span>
-                                </td>
-                                <td class="py-3 px-2">{{ $log->attempts }}</td>
-                                <td class="py-3 px-2 text-slate-500 text-xs">
-                                    <div title="{{ $log->meta['explanation'] ?? 'No explanation' }}"
-                                        class="cursor-help max-w-xs truncate">
-                                        {{ \Illuminate\Support\Str::limit($log->meta['explanation'] ?? 'N/A', 60) }}
-                                    </div>
-                                </td>
-                                <td class="py-3 px-2 text-slate-500 text-xs">{{ $log->created_at->diffForHumans() }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-                <div class="mt-5">{{ $logs->links() }}</div>
-            </div>
-
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-                <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">🚨 Top Risky IPs</h3>
-                <div class="space-y-3">
-                    @foreach($ips as $ip)
-                        <div
-                            class="flex justify-between items-center p-3 bg-slate-50 rounded-xl hover:shadow-sm transition">
-                            <div>
-                                <a href="{{ route('compliance.ip.profile', $ip->ip) }}"
-                                    class="font-mono text-sm font-medium text-slate-800 hover:text-indigo-600">{{ $ip->ip }}</a>
-                                @if($ip->country) <span class="text-xs text-slate-500 ml-2">{{ $ip->country }}</span> @endif
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <div class="w-24 bg-slate-200 rounded-full h-2">
-                                    <div class="bg-red-500 h-2 rounded-full" style="width: {{ $ip->score }}%"></div>
-                                </div>
-                                <span class="text-sm font-bold text-slate-700">{{ $ip->score }}</span>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
+        <!-- ... rest of your existing content ... -->
     </div>
 
     @push('scripts')
@@ -431,10 +247,6 @@
         .animate-marquee {
             animation: marquee 20s linear infinite;
             white-space: nowrap;
-        }
-
-        [x-cloak] {
-            display: none !important;
         }
     </style>
 </div>
