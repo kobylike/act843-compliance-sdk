@@ -9,10 +9,9 @@ class ComplianceHealthService
 {
     public function getHealthMetrics(): array
     {
-        // Get the most severe password policy scan (highest score) in the last 24 hours,
-        // fallback to the latest scan overall.
-        $passwordScan = $this->getMostSevereScan('PASSWORD_POLICY_SCAN', 24);
-        $retentionScan = $this->getMostSevereScan('DATA_RETENTION_SCAN', 24);
+        // Get the latest scan of each type (most recent date)
+        $passwordScan = $this->getLatestScan('PASSWORD_POLICY_SCAN');
+        $retentionScan = $this->getLatestScan('DATA_RETENTION_SCAN');
 
         $score = $this->calculateComplianceScore($passwordScan, $retentionScan);
 
@@ -30,24 +29,13 @@ class ComplianceHealthService
     }
 
     /**
-     * Get the most severe scan (highest score) of a given type within the last N hours.
-     * If none, return the latest scan overall.
+     * Get the most recent scan of a given type.
      */
-    protected function getMostSevereScan(string $type, int $hours = 24)
+    protected function getLatestScan(string $type)
     {
-        $cutoff = Carbon::now()->subHours($hours);
-        $scan = ComplianceLog::where('type', $type)
-            ->where('created_at', '>=', $cutoff)
-            ->orderBy('score', 'desc')
+        return ComplianceLog::where('type', $type)
+            ->orderBy('created_at', 'desc')
             ->first();
-
-        if (!$scan) {
-            // Fallback to the latest scan overall (any time)
-            $scan = ComplianceLog::where('type', $type)
-                ->orderBy('created_at', 'desc')
-                ->first();
-        }
-        return $scan;
     }
 
     protected function calculateComplianceScore($passwordScan, $retentionScan): int
