@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100"
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100" x-data="{ showFixModal: false }"
     wire:poll.10s="{{ $autoRefresh ? 'loadStats' : '' }}">
     <div class="container mx-auto px-6 py-8">
 
@@ -98,7 +98,80 @@
             @endforeach
         </div>
 
-        <!-- Compliance Health Section -->
+        <!-- Executive Summary with Functional "How to fix" -->
+        <div class="mb-8 bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-semibold text-slate-800 flex items-center gap-2">📊 Compliance Snapshot</h3>
+                <span
+                    class="text-sm px-3 py-1 rounded-full
+                    {{ $executiveSummary['status_color'] === 'green' ? 'bg-green-100 text-green-700' : ($executiveSummary['status_color'] === 'yellow' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
+                    Grade {{ $executiveSummary['grade'] }} – {{ $executiveSummary['status_text'] }}
+                </span>
+            </div>
+            <div class="space-y-3">
+                @foreach($executiveSummary['alerts'] as $alert)
+                    <div
+                        class="border-l-4 {{ $alert['severity'] === 'high' ? 'border-red-500 bg-red-50' : ($alert['severity'] === 'medium' ? 'border-yellow-500 bg-yellow-50' : 'border-green-500 bg-green-50') }} p-3 rounded-r-xl">
+                        <p class="text-slate-800">{{ $alert['message'] }}</p>
+                        @if($alert['action'])
+                            <div class="mt-2">
+                                <button @click="showFixModal = true" class="text-sm text-indigo-600 hover:underline">
+                                    📌 {{ $alert['action_label'] }}
+                                </button>
+                            </div>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        <!-- Modal for "How to fix" -->
+        <div x-show="showFixModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title"
+            role="dialog" aria-modal="true" @click.away="showFixModal = false">
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                <div
+                    class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
+                        <h3 class="text-lg font-bold text-white">How to Fix Weak Password Hashes</h3>
+                    </div>
+                    <div class="bg-white px-6 py-4">
+                        <p class="text-slate-700 text-sm mb-4">The system has detected that some user passwords are
+                            stored in a weak format (plain text, MD5, SHA1, or unknown).</p>
+                        <div class="space-y-3">
+                            <div class="bg-slate-50 p-3 rounded-lg">
+                                <p class="font-medium text-slate-800 mb-1">1. Run a deep password scan</p>
+                                <code
+                                    class="text-xs bg-slate-800 text-slate-100 px-2 py-1 rounded block">php artisan compliance:scan-passwords --deep --force</code>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg">
+                                <p class="font-medium text-slate-800 mb-1">2. Review the output to see how many weak
+                                    hashes exist</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg">
+                                <p class="font-medium text-slate-800 mb-1">3. Use your user management system to
+                                    identify accounts with weak hashes (e.g., check password column format)</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg">
+                                <p class="font-medium text-slate-800 mb-1">4. Reset affected passwords or re‑hash them
+                                    using bcrypt</p>
+                                <code
+                                    class="text-xs bg-slate-800 text-slate-100 px-2 py-1 rounded block">User::where(...)->update(['password' => Hash::make('newpassword')]);</code>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-4">This system is detection‑only – it does not automatically
+                            fix passwords. The steps above assist you in manual remediation.</p>
+                    </div>
+                    <div class="bg-slate-50 px-6 py-3 flex justify-end">
+                        <button @click="showFixModal = false"
+                            class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Compliance Health Section (unchanged) -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-10">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="font-semibold text-slate-800 flex items-center gap-2">📋 Compliance Health (Act 843)</h3>
@@ -127,12 +200,10 @@
                         <h4 class="font-medium text-slate-800">Password Policy</h4>
                     </div>
                     <div class="space-y-2 text-sm">
-                        <!-- Status -->
                         <div class="flex justify-between">
                             <span class="text-slate-500">Status</span>
                             <span class="font-medium">{{ $complianceHealth['password_policy']['status'] }}</span>
                         </div>
-                        <!-- Weak Hashes with tooltip -->
                         <div class="flex justify-between items-start">
                             <div class="flex items-center gap-1">
                                 <span class="text-slate-500">Weak Hashes</span>
@@ -155,7 +226,6 @@
                                 {{ $complianceHealth['password_policy']['weak_hashes'] }}
                             </span>
                         </div>
-                        <!-- Missing Policies -->
                         <div class="flex justify-between">
                             <span class="text-slate-500">Missing Policies</span>
                             <span>{{ $complianceHealth['password_policy']['weak_policies'] }}</span>
@@ -169,7 +239,7 @@
                     </div>
                 </div>
 
-                <!-- Data Retention card (unchanged) -->
+                <!-- Data Retention card -->
                 <div class="border border-slate-200 rounded-xl p-4">
                     <div class="flex items-center gap-2 mb-3">
                         <span class="text-xl">🗄️</span>
@@ -223,7 +293,7 @@
             </div>
         </div>
 
-        <!-- Threat Investigation Table (unchanged) -->
+        <!-- Table & Top IPs (unchanged) -->
         <div class="grid lg:grid-cols-3 gap-8">
             <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-5 overflow-x-auto">
                 <h3 class="font-semibold text-slate-800 mb-4">🔍 Threat Investigation Table</h3>
@@ -361,6 +431,10 @@
         .animate-marquee {
             animation: marquee 20s linear infinite;
             white-space: nowrap;
+        }
+
+        [x-cloak] {
+            display: none !important;
         }
     </style>
 </div>
