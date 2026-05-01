@@ -7,8 +7,10 @@
         "illuminate/support": "^11.0|^12.0|^13.0",
         "guzzlehttp/guzzle": "^7.0",
         "league/csv": "^9.0",
-        "livewire/livewire": "^3.0|^4.0",
-        "barryvdh/laravel-dompdf": "^3.0"
+        "livewire/livewire": "^3.0|^4.0"
+    },
+    "suggest": {
+        "barryvdh/laravel-dompdf": "Required to generate PDF compliance reports."
     },
     "license": "MIT",
     "autoload": {
