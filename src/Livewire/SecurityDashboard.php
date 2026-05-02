@@ -8,12 +8,11 @@ use GhanaCompliance\Act843SDK\Models\IpReputation;
 use GhanaCompliance\Act843SDK\Models\SecurityAlert;
 use GhanaCompliance\Act843SDK\Services\ComplianceHealthService;
 use Illuminate\Support\Facades\Artisan;
-use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-#[Layout('layouts.compliance')]
+
 class SecurityDashboard extends Component
 {
     use WithPagination;
