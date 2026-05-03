@@ -2,9 +2,10 @@
 
 namespace GhanaCompliance\Act843SDK\Services\Security;
 
-use Illuminate\Support\Facades\Cache;
-use GhanaCompliance\Act843SDK\Services\Security\ThreatIntelligenceService;
+use GhanaCompliance\Act843SDK\Models\IpReputation;
 use GhanaCompliance\Act843SDK\Services\Security\GeoLocationService;
+use GhanaCompliance\Act843SDK\Services\Security\ThreatIntelligenceService;
+use Illuminate\Support\Facades\Cache;
 
 class ComplianceAnalyzer
 {
@@ -50,7 +51,7 @@ class ComplianceAnalyzer
 
         // Recidivism bonus
         $recidivismBonus = 0;
-        $record = \App\Models\IpReputation::where('ip', $ip)->first();
+        $record = IpReputation::where('ip', $ip)->first();
         if ($record && $record->score > 60) {
             $recidivismBonus = 20;
             $score += 20;

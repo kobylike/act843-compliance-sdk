@@ -223,6 +223,8 @@ Route::middleware(['auth'])->group(function () {
             'PASSWORD_COMPLEXITY' => 'true',
             'ALLOW_DEEP_PASSWORD_SCAN' => 'false',
             'COMPLIANCE_PROACTIVE_PASSWORD_CHECK' => 'true',
+            'COMPLIANCE_REGULATOR_API_URL=http://127.0.0.1:8000/api/compliance-reports',
+            'COMPLIANCE_REGULATOR_API_KEY' => 'your_api_kry_here'
         ];
 
         foreach ($vars as $key => $value) {

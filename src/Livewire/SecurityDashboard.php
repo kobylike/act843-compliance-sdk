@@ -12,7 +12,6 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-
 class SecurityDashboard extends Component
 {
     use WithPagination;
@@ -21,22 +20,16 @@ class SecurityDashboard extends Component
     public $filterType = '';
     public $dateRange = 'today';
     public $autoRefresh = true;
-    public $simpleMode = false;          // Simple Mode toggle
+    public $simpleMode = false;
     public $stats = [];
     public $complianceHealth = [];
 
-    protected $listeners = ['refreshDashboard' => 'loadStats'];
     public $showFixModal = false;
 
-    public function toggleFixModal()
-    {
-        $this->showFixModal = !$this->showFixModal;
-    }
     public function mount()
     {
         $this->loadStats();
         $this->loadComplianceHealth();
-        // Load simple mode preference from session
         $this->simpleMode = session('compliance_simple_mode', false);
     }
 
@@ -44,6 +37,7 @@ class SecurityDashboard extends Component
     {
         $this->simpleMode = !$this->simpleMode;
         session(['compliance_simple_mode' => $this->simpleMode]);
+        $this->dispatch('refreshDashboard');   // 👈 FIX: force chart reinit after mode change
     }
 
     public function loadStats()
@@ -71,6 +65,8 @@ class SecurityDashboard extends Component
             'avg_score' => round((clone $query)->avg('score') ?? 0),
             'active_alerts' => SecurityAlert::unresolved()->count(),
         ];
+
+        $this->dispatch('refreshDashboard');   // 👈 FIX: tell frontend to rebuild charts after data refresh
     }
 
     public function loadComplianceHealth()
@@ -111,7 +107,7 @@ class SecurityDashboard extends Component
                 ->groupBy('date')
                 ->orderBy('date')
                 ->get()
-                ->map(fn($item) => ['label' => $item->date, 'score' => $item->avg_score]);
+                ->map(fn($item) => ['label' => $item->date, 'score' => round($item->avg_score)]);
         }
 
         $data = ComplianceLog::selectRaw('HOUR(created_at) as hour, AVG(score) as avg_score')
@@ -119,7 +115,7 @@ class SecurityDashboard extends Component
             ->groupBy('hour')
             ->orderBy('hour')
             ->get()
-            ->map(fn($item) => ['label' => $item->hour . ':00', 'score' => $item->avg_score]);
+            ->map(fn($item) => ['label' => $item->hour . ':00', 'score' => round($item->avg_score)]);
 
         if ($data->isEmpty()) {
             return collect([['label' => now()->format('H:00'), 'score' => 0]]);
@@ -173,9 +169,6 @@ class SecurityDashboard extends Component
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    /**
-     * Get plain‑language executive summary for non‑technical users.
-     */
     public function getExecutiveSummary()
     {
         $health = $this->complianceHealth;
@@ -246,7 +239,6 @@ class SecurityDashboard extends Component
         if ($this->filterSeverity) $query->where('severity', $this->filterSeverity);
         if ($this->filterType) $query->where('type', $this->filterType);
 
-        // In simple mode, only show medium/high severity logs and hide routine scans (score 10)
         if ($this->simpleMode) {
             $query->where('severity', '!=', 'LOW')
                 ->orWhere(function ($q) {
