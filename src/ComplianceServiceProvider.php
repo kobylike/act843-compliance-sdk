@@ -46,7 +46,7 @@ class ComplianceServiceProvider extends ServiceProvider
 
         // Register event listener for failed login attempts
         Event::listen(Failed::class, \GhanaCompliance\Act843SDK\Listeners\LogFailedLoginAttempt::class);
-
+        Event::listen(GateEvaluated::class, \GhanaCompliance\Act843SDK\Listeners\LogAuthorizationDenial::class);
         // Register privilege escalation detection (if enabled)
         if (config('compliance.privilege_escalation_detection', true)) {
             Event::listen(GateEvaluated::class, \GhanaCompliance\Act843SDK\Listeners\LogAuthorizationDenial::class);

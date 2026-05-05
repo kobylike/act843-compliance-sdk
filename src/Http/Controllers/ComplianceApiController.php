@@ -2,7 +2,7 @@
 
 namespace GhanaCompliance\Act843SDK\Http\Controllers\Api;
 
-use Illuminate\Routing\Controller;  // Use Laravel's base controller
+use Illuminate\Routing\Controller;
 use GhanaCompliance\Act843SDK\Services\Security\ComplianceAnalyzer;
 use GhanaCompliance\Act843SDK\Compliance\SDK\ComplianceClient;
 use Illuminate\Http\Request;

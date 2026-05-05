@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Listeners;
+namespace GhanaCompliance\Act843SDK\Listeners;
 
 use Illuminate\Auth\Access\Events\GateEvaluated;
 use Illuminate\Support\Facades\Cache;
-use App\Services\Security\ComplianceEngine;
+use GhanaCompliance\Act843SDK\Services\Security\ComplianceEngine;
 
 class LogAuthorizationDenial
 {
-    public function handle(GateEvaluated $event)
+    public function handle(GateEvaluated $event): void
     {
         // Only log denials
         if ($event->result !== false) {
@@ -16,14 +16,13 @@ class LogAuthorizationDenial
         }
 
         $user = $event->user;
-        // Use getAuthIdentifier() – works for any Authenticatable user (Laravel default or custom)
         $userId = $user ? ($user->getAuthIdentifier() ?? $user->email ?? 'unknown') : 'guest';
         $ability = $event->ability;
         $arguments = $event->arguments;
         $resource = is_object($arguments[0] ?? null) ? get_class($arguments[0]) : ($arguments[0] ?? 'unknown');
         $ip = request()->ip();
 
-        // Track repeated denials
+        // Track repeated denials for the same user/ability/resource
         $cacheKey = "priv_esc_{$userId}_{$ability}_{$resource}";
         $attempts = Cache::get($cacheKey, 0) + 1;
         Cache::put($cacheKey, $attempts, now()->addMinutes(15));
@@ -44,6 +43,7 @@ class LogAuthorizationDenial
                 'resource' => $resource,
                 'ip' => $ip,
                 'user_agent' => request()->userAgent(),
+                'explanation' => "User {$userId} was denied access to {$ability} on {$resource} (attempt #{$attempts})",
             ],
             'recommendation' => $attempts > 3
                 ? 'Immediate review – persistent privilege escalation attempts.'

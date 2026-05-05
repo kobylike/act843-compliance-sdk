@@ -14,6 +14,25 @@ return [
         'simulation_ips' => ['127.0.0.100', '127.0.0.101'],
     ],
 
+    'rbac' => [
+        // Automatically apply 'compliance.role' middleware to routes containing these strings
+        'enforce_on_routes_containing' => [
+            'dashboard',
+            'admin',
+            'compliance',
+            'security',
+        ],
+
+        // Log unauthorized attempts without blocking? (false = block & log)
+        'log_only' => env('COMPLIANCE_RBAC_LOG_ONLY', false),
+
+        // Required role for protected routes (default 'compliance')
+        'required_role' => env('COMPLIANCE_REQUIRED_ROLE', 'compliance'),
+
+        // Score to assign when unauthorized access is detected
+        'unauthorized_score' => 80,
+    ],
+
     // 🔥 NEW: Allow deep password scan (sampling user hashes)
     'allow_deep_password_scan' => env('ALLOW_DEEP_PASSWORD_SCAN', false),
     'report_email' => env('COMPLIANCE_REPORT_EMAIL', 'kobylike2@gmail.com'),
