@@ -28,6 +28,7 @@ class ComplianceServiceProvider extends ServiceProvider
             \GhanaCompliance\Act843SDK\Console\Commands\DecayIpReputations::class,
             \GhanaCompliance\Act843SDK\Console\Commands\ComplianceSendReport::class,
             \GhanaCompliance\Act843SDK\Console\Commands\ComplianceInstallCommand::class,
+            \GhanaCompliance\Act843SDK\Console\Commands\ComplianceAuditRoutes::class,
         ]);
 
         if ($this->app->runningInConsole()) {
