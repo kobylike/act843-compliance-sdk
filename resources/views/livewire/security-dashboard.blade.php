@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100"
     wire:poll.10s="{{ $autoRefresh ? 'loadStats' : '' }}">
 
-    <!-- Toast Notifications Container -->
+    <!-- Toast Notifications Container (Alpine) -->
     <div class="fixed top-5 right-5 z-50 space-y-2" x-data="toast()" x-init="init()"
         @toast.window="addToast($event.detail)">
         <template x-for="toast in toasts" :key="toast.id">
@@ -344,29 +344,30 @@
         </div>
     </div>
 
-    <!-- Modal for command output -->
-    <div x-data="{ open: false }" x-on:open-modal.window="open = true" x-show="open" x-cloak
-        class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div
-                class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
-                    <h3 class="text-lg font-bold text-white">{{ $modalTitle ?? 'Command Output' }}</h3>
-                </div>
-                <div class="bg-white px-6 py-4">
-                    <div class="text-slate-700 text-sm max-h-96 overflow-y-auto font-mono">
-                        {!! $modalContent ?? '' !!}
+    <!-- Livewire Modal (no Alpine) -->
+    @if($showCommandModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+                <div
+                    class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
+                        <h3 class="text-lg font-bold text-white">{{ $modalTitle }}</h3>
                     </div>
-                </div>
-                <div class="bg-slate-50 px-6 py-3 flex justify-end">
-                    <button @click="open = false"
-                        class="cursor-pointer px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition">Close</button>
+                    <div class="bg-white px-6 py-4">
+                        <div class="text-slate-700 text-sm max-h-96 overflow-y-auto font-mono">
+                            {!! $modalContent !!}
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 px-6 py-3 flex justify-end">
+                        <button wire:click="closeCommandModal"
+                            class="cursor-pointer px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition">Close</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    @endif
 
     @push('scripts')
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

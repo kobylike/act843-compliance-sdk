@@ -25,12 +25,10 @@ class SecurityDashboard extends Component
     public $complianceHealth = [];
 
     public $showFixModal = false;
+    public $showCommandModal = false;
     public $modalTitle = '';
     public $modalContent = '';
 
-    /**
-     * Dispatch a toast notification.
-     */
     private function toast($message, $type = 'success')
     {
         $this->dispatch('toast', message: $message, type: $type);
@@ -54,7 +52,6 @@ class SecurityDashboard extends Component
     public function loadStats()
     {
         $query = ComplianceLog::query();
-
         switch ($this->dateRange) {
             case 'today':
                 $query->whereDate('created_at', Carbon::today());
@@ -66,7 +63,6 @@ class SecurityDashboard extends Component
                 $query->where('created_at', '>=', Carbon::now()->subMonth());
                 break;
         }
-
         $this->stats = [
             'total_threats' => (clone $query)->count(),
             'high_risk' => (clone $query)->where('severity', 'HIGH')->count(),
@@ -76,7 +72,6 @@ class SecurityDashboard extends Component
             'avg_score' => round((clone $query)->avg('score') ?? 0),
             'active_alerts' => SecurityAlert::unresolved()->count(),
         ];
-
         $this->dispatch('refreshDashboard');
     }
 
@@ -120,7 +115,7 @@ class SecurityDashboard extends Component
         $output = Artisan::output();
         $this->modalTitle = 'Purge Preview (Dry Run)';
         $this->modalContent = nl2br(e($output));
-        $this->dispatch('openModal');
+        $this->showCommandModal = true;
     }
 
     public function runPurge()
@@ -130,7 +125,7 @@ class SecurityDashboard extends Component
             $output = Artisan::output();
             $this->modalTitle = 'Purge Result';
             $this->modalContent = nl2br(e($output));
-            $this->dispatch('openModal');
+            $this->showCommandModal = true;
             $this->loadComplianceHealth();
             $this->toast('Old records purged successfully', 'success');
         } catch (\Exception $e) {
@@ -146,7 +141,7 @@ class SecurityDashboard extends Component
             $output = Artisan::output();
             $this->modalTitle = 'Send Report to Regulator';
             $this->modalContent = nl2br(e($output));
-            $this->dispatch('openModal');
+            $this->showCommandModal = true;
             $this->toast('Report sent to regulator', 'success');
         } catch (\Exception $e) {
             $this->toast('Failed to send report: ' . $e->getMessage(), 'error');
@@ -160,7 +155,7 @@ class SecurityDashboard extends Component
             $output = Artisan::output();
             $this->modalTitle = 'Weekly Report Email';
             $this->modalContent = nl2br(e($output));
-            $this->dispatch('openModal');
+            $this->showCommandModal = true;
             $this->toast('Weekly report email sent', 'success');
         } catch (\Exception $e) {
             $this->toast('Failed to send weekly report: ' . $e->getMessage(), 'error');
@@ -175,7 +170,7 @@ class SecurityDashboard extends Component
             $output = Artisan::output();
             $this->modalTitle = 'Route Audit Results';
             $this->modalContent = nl2br(e($output));
-            $this->dispatch('openModal');
+            $this->showCommandModal = true;
             $this->toast('Route audit completed', 'success');
         } catch (\Exception $e) {
             $this->toast('Route audit failed: ' . $e->getMessage(), 'error');
@@ -192,7 +187,7 @@ class SecurityDashboard extends Component
             $output = Artisan::output();
             $this->modalTitle = 'DSR Evaluation (last 30 days)';
             $this->modalContent = nl2br(e($output));
-            $this->dispatch('openModal');
+            $this->showCommandModal = true;
             $this->toast('DSR evaluation completed', 'success');
         } catch (\Exception $e) {
             $this->toast('DSR evaluation failed: ' . $e->getMessage(), 'error');
@@ -207,7 +202,7 @@ class SecurityDashboard extends Component
             $output = Artisan::output();
             $this->modalTitle = 'Decay IP Reputations';
             $this->modalContent = nl2br(e($output));
-            $this->dispatch('openModal');
+            $this->showCommandModal = true;
             $this->loadStats();
             $this->toast('IP scores decayed', 'success');
         } catch (\Exception $e) {
@@ -227,14 +222,19 @@ class SecurityDashboard extends Component
             $output = Artisan::output();
             $this->modalTitle = 'Anomaly Model Training';
             $this->modalContent = nl2br(e($output));
-            $this->dispatch('openModal');
+            $this->showCommandModal = true;
             $this->toast('Anomaly model trained', 'success');
         } catch (\Exception $e) {
             $this->toast('Training failed: ' . $e->getMessage(), 'error');
         }
     }
 
-    // --- Charts and data helpers ---
+    public function closeCommandModal()
+    {
+        $this->showCommandModal = false;
+    }
+
+    // --- Chart and table helpers (unchanged) ---
     #[On('echo:security,AlertEvent')]
     public function refreshAlerts()
     {
@@ -246,22 +246,14 @@ class SecurityDashboard extends Component
         if ($this->dateRange === 'week') {
             return ComplianceLog::selectRaw('DATE(created_at) as date, AVG(score) as avg_score')
                 ->where('created_at', '>=', Carbon::now()->subWeek())
-                ->groupBy('date')
-                ->orderBy('date')
-                ->get()
-                ->map(fn($item) => ['label' => $item->date, 'score' => round($item->avg_score)]);
+                ->groupBy('date')->orderBy('date')
+                ->get()->map(fn($item) => ['label' => $item->date, 'score' => round($item->avg_score)]);
         }
-
         $data = ComplianceLog::selectRaw('HOUR(created_at) as hour, AVG(score) as avg_score')
             ->whereDate('created_at', now())
-            ->groupBy('hour')
-            ->orderBy('hour')
-            ->get()
-            ->map(fn($item) => ['label' => $item->hour . ':00', 'score' => round($item->avg_score)]);
-
-        if ($data->isEmpty()) {
-            return collect([['label' => now()->format('H:00'), 'score' => 0]]);
-        }
+            ->groupBy('hour')->orderBy('hour')
+            ->get()->map(fn($item) => ['label' => $item->hour . ':00', 'score' => round($item->avg_score)]);
+        if ($data->isEmpty()) return collect([['label' => now()->format('H:00'), 'score' => 0]]);
         return $data;
     }
 
@@ -270,42 +262,28 @@ class SecurityDashboard extends Component
         return ComplianceLog::selectRaw('type, COUNT(*) as total')
             ->when($this->dateRange === 'today', fn($q) => $q->whereDate('created_at', Carbon::today()))
             ->when($this->dateRange === 'week', fn($q) => $q->where('created_at', '>=', Carbon::now()->subWeek()))
-            ->groupBy('type')
-            ->limit(10)
-            ->get();
+            ->groupBy('type')->limit(10)->get();
     }
 
     public function getComplianceTrendData()
     {
         return ComplianceLog::whereIn('type', ['PASSWORD_POLICY_SCAN', 'DATA_RETENTION_SCAN'])
             ->where('created_at', '>=', Carbon::now()->subDays(30))
-            ->orderBy('created_at')
-            ->get()
+            ->orderBy('created_at')->get()
             ->groupBy(fn($log) => $log->created_at->format('Y-m-d'))
-            ->map(fn($logs) => round($logs->avg('score')))
-            ->toArray();
+            ->map(fn($logs) => round($logs->avg('score')))->toArray();
     }
 
     public function exportCsv()
     {
         $logs = ComplianceLog::latest()->take(5000)->get();
         $filename = 'security_logs_' . now()->format('Y-m-d_His') . '.csv';
-
         return response()->streamDownload(function () use ($logs) {
             $handle = fopen('php://output', 'w');
             fputs($handle, "\xEF\xBB\xBF");
             fputcsv($handle, ['ID', 'Type', 'IP', 'Score', 'Severity', 'Attempts', 'Created At']);
-
             foreach ($logs as $log) {
-                fputcsv($handle, [
-                    $log->id,
-                    $log->type,
-                    $log->ip_address,
-                    $log->score,
-                    $log->severity,
-                    $log->attempts,
-                    $log->created_at,
-                ]);
+                fputcsv($handle, [$log->id, $log->type, $log->ip_address, $log->score, $log->severity, $log->attempts, $log->created_at]);
             }
             fclose($handle);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
@@ -319,76 +297,36 @@ class SecurityDashboard extends Component
         $weakHashes = $health['password_policy']['weak_hashes'];
         $weakPolicies = $health['password_policy']['weak_policies'];
         $nonCompliantTables = $health['data_retention']['non_compliant'];
-
         $statusColor = $score >= 80 ? 'green' : ($score >= 60 ? 'yellow' : 'red');
         $statusText = $score >= 80 ? 'Good' : ($score >= 60 ? 'Needs attention' : 'Critical issues');
-
         $alerts = [];
-
         if ($weakHashes > 0) {
-            $alerts[] = [
-                'severity' => 'high',
-                'message' => "{$weakHashes} user passwords are stored in a weak format (plain text or MD5). Fix immediately.",
-                'action' => 'Run a deep password scan and re‑hash passwords.',
-                'action_label' => 'How to fix',
-            ];
+            $alerts[] = ['severity' => 'high', 'message' => "{$weakHashes} user passwords are stored in a weak format (plain text or MD5). Fix immediately.", 'action' => 'Run a deep password scan and re‑hash passwords.', 'action_label' => 'How to fix'];
         }
-
         if ($weakPolicies > 0) {
-            $alerts[] = [
-                'severity' => 'medium',
-                'message' => 'Your password policy is missing some security rules (min length or complexity).',
-                'action' => 'Check config/compliance.php and enforce min length 12 and complexity.',
-                'action_label' => 'Fix policy',
-            ];
+            $alerts[] = ['severity' => 'medium', 'message' => 'Your password policy is missing some security rules (min length or complexity).', 'action' => 'Check config/compliance.php and enforce min length 12 and complexity.', 'action_label' => 'Fix policy'];
         }
-
         if ($nonCompliantTables > 0) {
-            $alerts[] = [
-                'severity' => 'medium',
-                'message' => "{$nonCompliantTables} database tables have data older than allowed retention period.",
-                'action' => 'Use the “Delete old records” button to clean up.',
-                'action_label' => 'Clean up',
-            ];
+            $alerts[] = ['severity' => 'medium', 'message' => "{$nonCompliantTables} database tables have data older than allowed retention period.", 'action' => 'Use the “Delete old records” button to clean up.', 'action_label' => 'Clean up'];
         }
-
         if (empty($alerts)) {
-            $alerts[] = [
-                'severity' => 'low',
-                'message' => 'All compliance checks passed. Your system is compliant with Act 843.',
-                'action' => '',
-                'action_label' => '',
-            ];
+            $alerts[] = ['severity' => 'low', 'message' => 'All compliance checks passed. Your system is compliant with Act 843.', 'action' => '', 'action_label' => ''];
         }
-
-        return [
-            'score' => $score,
-            'grade' => $grade,
-            'status_color' => $statusColor,
-            'status_text' => $statusText,
-            'alerts' => $alerts,
-        ];
+        return ['score' => $score, 'grade' => $grade, 'status_color' => $statusColor, 'status_text' => $statusText, 'alerts' => $alerts];
     }
 
     public function render()
     {
-        $alerts = SecurityAlert::unresolved()
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
-
+        $alerts = SecurityAlert::unresolved()->orderBy('created_at', 'desc')->limit(10)->get();
         $query = ComplianceLog::query();
         if ($this->filterSeverity) $query->where('severity', $this->filterSeverity);
         if ($this->filterType) $query->where('type', $this->filterType);
-
         if ($this->simpleMode) {
             $query->where('severity', '!=', 'LOW')
                 ->orWhere(function ($q) {
-                    $q->where('severity', 'LOW')
-                        ->whereNotIn('type', ['PASSWORD_POLICY_SCAN', 'DATA_RETENTION_SCAN']);
+                    $q->where('severity', 'LOW')->whereNotIn('type', ['PASSWORD_POLICY_SCAN', 'DATA_RETENTION_SCAN']);
                 });
         }
-
         return view('compliance::livewire.security-dashboard', [
             'logs' => $query->latest()->paginate(20),
             'ips' => IpReputation::orderByDesc('score')->limit(15)->get(),
