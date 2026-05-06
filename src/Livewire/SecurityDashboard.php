@@ -25,6 +25,8 @@ class SecurityDashboard extends Component
     public $complianceHealth = [];
 
     public $showFixModal = false;
+    public $modalTitle = '';
+    public $modalContent = '';
 
     public function mount()
     {
@@ -37,7 +39,7 @@ class SecurityDashboard extends Component
     {
         $this->simpleMode = !$this->simpleMode;
         session(['compliance_simple_mode' => $this->simpleMode]);
-        $this->dispatch('refreshDashboard');   // 👈 FIX: force chart reinit after mode change
+        $this->dispatch('refreshDashboard');
     }
 
     public function loadStats()
@@ -66,7 +68,7 @@ class SecurityDashboard extends Component
             'active_alerts' => SecurityAlert::unresolved()->count(),
         ];
 
-        $this->dispatch('refreshDashboard');   // 👈 FIX: tell frontend to rebuild charts after data refresh
+        $this->dispatch('refreshDashboard');
     }
 
     public function loadComplianceHealth()
@@ -74,6 +76,7 @@ class SecurityDashboard extends Component
         $this->complianceHealth = app(ComplianceHealthService::class)->getHealthMetrics();
     }
 
+    // --- Existing scans ---
     public function runComplianceScans()
     {
         Artisan::call('compliance:scan-passwords');
@@ -93,6 +96,93 @@ class SecurityDashboard extends Component
         $this->dispatch('notify', 'Deep password scan completed.', 'success');
     }
 
+    // --- New: Data Retention actions ---
+    public function previewPurge()
+    {
+        Artisan::call('compliance:purge --dry-run');
+        $output = Artisan::output();
+        $this->modalTitle = 'Purge Preview (Dry Run)';
+        $this->modalContent = nl2br(e($output));
+        $this->dispatch('openModal');
+    }
+
+    public function runPurge()
+    {
+        Artisan::call('compliance:purge');
+        $output = Artisan::output();
+        $this->modalTitle = 'Purge Result';
+        $this->modalContent = nl2br(e($output));
+        $this->dispatch('openModal');
+        $this->loadComplianceHealth(); // refresh retention status
+    }
+
+    // --- New: Regulator reporting ---
+    public function sendReportNow()
+    {
+        Artisan::call('compliance:send-report');
+        $output = Artisan::output();
+        $this->modalTitle = 'Send Report to Regulator';
+        $this->modalContent = nl2br(e($output));
+        $this->dispatch('openModal');
+    }
+
+    public function sendWeeklyReportNow()
+    {
+        Artisan::call('compliance:weekly-report');
+        $output = Artisan::output();
+        $this->modalTitle = 'Weekly Report Email';
+        $this->modalContent = nl2br(e($output));
+        $this->dispatch('openModal');
+    }
+
+    // --- New: Route audit ---
+    public function runRouteAudit()
+    {
+        Artisan::call('compliance:audit-routes --log-missing');
+        $output = Artisan::output();
+        $this->modalTitle = 'Route Audit Results';
+        $this->modalContent = nl2br(e($output));
+        $this->dispatch('openModal');
+    }
+
+    // --- New: DSR Evaluation ---
+    public function runDsrEvaluation()
+    {
+        $from = now()->subDays(30)->format('Y-m-d');
+        $to = now()->format('Y-m-d');
+        Artisan::call("compliance:evaluate --from={$from} --to={$to}");
+        $output = Artisan::output();
+        $this->modalTitle = 'DSR Evaluation (last 30 days)';
+        $this->modalContent = nl2br(e($output));
+        $this->dispatch('openModal');
+    }
+
+    // --- New: Decay IP scores ---
+    public function decayIpScores()
+    {
+        Artisan::call('security:decay-ips');
+        $output = Artisan::output();
+        $this->modalTitle = 'Decay IP Reputations';
+        $this->modalContent = nl2br(e($output));
+        $this->dispatch('openModal');
+        $this->loadStats(); // refresh top IPs list
+    }
+
+    // --- New: Train anomaly model (if enabled) ---
+    public function trainAnomalyModel()
+    {
+        if (!config('compliance.anomaly_detection', false)) {
+            $this->dispatch('notify', 'Anomaly detection is disabled. Enable COMPLIANCE_ANOMALY_DETECTION=true in .env', 'error');
+            return;
+        }
+        Artisan::call('compliance:train-anomaly');
+        $output = Artisan::output();
+        $this->modalTitle = 'Anomaly Model Training';
+        $this->modalContent = nl2br(e($output));
+        $this->dispatch('openModal');
+    }
+
+    // --- Existing methods (getChartData, getAttackTypeDistribution, getComplianceTrendData, exportCsv, getExecutiveSummary, render) unchanged ---
     #[On('echo:security,AlertEvent')]
     public function refreshAlerts()
     {
@@ -187,7 +277,7 @@ class SecurityDashboard extends Component
             $alerts[] = [
                 'severity' => 'high',
                 'message' => "{$weakHashes} user passwords are stored in a weak format (plain text or MD5). Fix immediately.",
-                'action' => 'Run `php artisan compliance:scan-passwords --deep --force` and then re‑hash passwords.',
+                'action' => 'Run a deep password scan and re‑hash passwords.',
                 'action_label' => 'How to fix',
             ];
         }
@@ -205,7 +295,7 @@ class SecurityDashboard extends Component
             $alerts[] = [
                 'severity' => 'medium',
                 'message' => "{$nonCompliantTables} database tables have data older than allowed retention period.",
-                'action' => 'Run `php artisan compliance:purge` to delete old records.',
+                'action' => 'Use the “Delete old records” button to clean up.',
                 'action_label' => 'Clean up',
             ];
         }
