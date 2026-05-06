@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\File;
 class ComplianceInstallCommand extends Command
 {
     protected $signature = 'compliance:install';
-    protected $description = 'Install the Compliance SDK (config, migrations, event listeners)';
+    protected $description = 'Install the Compliance SDK (config, migrations, event listeners, RBAC)';
 
     public function handle()
     {
@@ -279,8 +279,10 @@ Route::middleware(['auth'])->group(function () {
             $this->line('COMPLIANCE_ENABLED=true');
             $this->line('PASSWORD_MIN_LENGTH=12');
             $this->line('PASSWORD_COMPLEXITY=true');
+            $this->line('COMPLIANCE_RBAC_DRIVER=spatie');
             $this->line('COMPLIANCE_RBAC_LOG_ONLY=false');
             $this->line('COMPLIANCE_REQUIRED_ROLE=compliance');
+            $this->line('COMPLIANCE_ROLE_COLUMN=role');
             return;
         }
 
@@ -290,8 +292,10 @@ Route::middleware(['auth'])->group(function () {
             'PASSWORD_COMPLEXITY' => 'true',
             'ALLOW_DEEP_PASSWORD_SCAN' => 'false',
             'COMPLIANCE_PROACTIVE_PASSWORD_CHECK' => 'true',
+            'COMPLIANCE_RBAC_DRIVER' => 'spatie',
             'COMPLIANCE_RBAC_LOG_ONLY' => 'false',
             'COMPLIANCE_REQUIRED_ROLE' => 'compliance',
+            'COMPLIANCE_ROLE_COLUMN' => 'role',
             'COMPLIANCE_REGULATOR_API_URL' => 'http://127.0.0.1:8000/api/compliance-reports',
             'COMPLIANCE_REGULATOR_API_KEY' => 'your_api_key_here'
         ];
@@ -322,12 +326,14 @@ Route::middleware(['auth'])->group(function () {
         $this->line('  4. Visit /security-dashboard (login required)');
         $this->newLine();
         $this->line('🔒 RBAC: Dashboard is protected by "auth" only. To restrict to specific roles:');
-        $this->line('   - Install spatie/laravel-permission or use Laravel Gates');
-        $this->line('   - Add middleware "compliance.role" to the route group in routes/web.php');
+        $this->line('   - Choose RBAC driver: spatie (default) or native');
+        $this->line('   - Set COMPLIANCE_RBAC_DRIVER=native in .env for simple role column');
+        $this->line('   - Add middleware "compliance.role" to route group in routes/web.php');
         $this->line('   - See documentation: https://github.com/ghanacompliance/act843-sdk#rbac');
         $this->line('');
         $this->line('⚙️  To allow access, assign the "compliance" role to users:');
-        $this->line('   $user->assignRole("compliance");');
+        $this->line('   Spatie: $user->assignRole("compliance");');
+        $this->line('   Native: update users.role column to "compliance"');
     }
 
     protected function getDefaultConfig(): string
@@ -363,6 +369,12 @@ return [
         'enforce_on_routes_containing' => [
             'dashboard', 'admin', 'compliance', 'security',
         ],
+
+        // Driver: 'spatie' (uses hasRole) or 'native' (uses column)
+        'driver' => env('COMPLIANCE_RBAC_DRIVER', 'spatie'),
+
+        // Column name for native driver
+        'role_column' => env('COMPLIANCE_ROLE_COLUMN', 'role'),
 
         // Log unauthorized attempts without blocking? (false = block & log)
         'log_only' => env('COMPLIANCE_RBAC_LOG_ONLY', false),

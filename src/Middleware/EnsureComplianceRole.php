@@ -13,12 +13,24 @@ class EnsureComplianceRole
     {
         $requiredRole = config('compliance.rbac.required_role', 'compliance');
         $logOnly = config('compliance.rbac.log_only', false);
+        $driver = config('compliance.rbac.driver', 'spatie');
+        $roleColumn = config('compliance.rbac.role_column', 'role');
 
         $user = Auth::user();
-        $hasRole = $user && method_exists($user, 'hasRole') && $user->hasRole($requiredRole);
+        $hasRole = false;
+
+        if ($user) {
+            if ($driver === 'spatie') {
+                // Spatie Laravel Permission
+                $hasRole = method_exists($user, 'hasRole') && $user->hasRole($requiredRole);
+            } elseif ($driver === 'native') {
+                // Native role column
+                $hasRole = ($user->{$roleColumn} ?? null) === $requiredRole;
+            }
+        }
 
         if (!$hasRole) {
-            // Log every unauthorised attempt
+            // Log unauthorised attempt
             ComplianceEngine::log([
                 'type' => 'UNAUTHORIZED_ACCESS',
                 'score' => config('compliance.rbac.unauthorized_score', 80),
@@ -29,12 +41,12 @@ class EnsureComplianceRole
                     'ip' => $request->ip(),
                     'user_id' => $user?->id ?? 'guest',
                     'required_role' => $requiredRole,
-                    'explanation' => "User without '{$requiredRole}' role attempted to access {$request->path()}",
+                    'driver' => $driver,
+                    'explanation' => "User without '{$requiredRole}' role attempted to access {$request->path()} (driver: {$driver})",
                 ],
                 'recommendation' => 'Review access logs – possible privilege escalation attempt.',
             ]);
 
-            // If log-only mode, let them through; otherwise block
             if (!$logOnly) {
                 abort(403, 'Unauthorized – ' . ucfirst($requiredRole) . ' officer access only.');
             }
