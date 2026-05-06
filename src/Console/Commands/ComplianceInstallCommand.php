@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\File;
 class ComplianceInstallCommand extends Command
 {
     protected $signature = 'compliance:install';
-    protected $description = 'Install the Compliance SDK (config, migrations, event listeners, RBAC monitoring)';
+    protected $description = 'Install the Compliance SDK (config, migrations, event listeners)';
 
     public function handle()
     {
@@ -19,10 +19,18 @@ class ComplianceInstallCommand extends Command
         $this->registerEventListener();
         $this->registerProactivePasswordCheck();
         $this->addMiddleware();
-        $this->publishMiddleware();          // NEW: publish EnsureComplianceRole
-        $this->registerMiddlewareAlias();    // NEW: register alias in bootstrap/app.php
-        $this->addRoutes();
-        $this->addRouteProtection();         // NEW: override routes with role middleware
+
+        // Optional RBAC setup (ask user)
+        if ($this->confirm('Do you want to set up role‑based access control (RBAC)?', false)) {
+            $this->publishMiddleware();
+            $this->registerMiddlewareAlias();
+            $this->info('✅ RBAC middleware published and alias registered.');
+            $this->line('   To protect routes, add "compliance.role" to the route middleware group.');
+        } else {
+            $this->info('Skipped RBAC setup. You can add role protection manually later.');
+        }
+
+        $this->addRoutes();  // routes with only 'auth' middleware
         $this->setupEnv();
         $this->showNextSteps();
 
@@ -181,7 +189,7 @@ PHP;
     }
 
     /**
-     * Publish the EnsureComplianceRole middleware to the application.
+     * Publish the EnsureComplianceRole middleware to the application (optional).
      */
     protected function publishMiddleware(): void
     {
@@ -206,7 +214,7 @@ PHP;
     }
 
     /**
-     * Register the 'compliance.role' alias in bootstrap/app.php.
+     * Register the 'compliance.role' alias in bootstrap/app.php (optional).
      */
     protected function registerMiddlewareAlias(): void
     {
@@ -221,7 +229,6 @@ PHP;
         $aliasDefinition = "'compliance.role' => \\App\\Http\\Middleware\\EnsureComplianceRole::class";
 
         if (!str_contains($content, $aliasDefinition)) {
-            // Try to insert the alias inside the withMiddleware section
             $pattern = '/->withMiddleware\(function \(Middleware \$middleware\): void \{\s*/';
             $replacement = "$0        \$middleware->alias([\n            $aliasDefinition,\n        ]);\n";
             if (preg_match($pattern, $content)) {
@@ -237,6 +244,9 @@ PHP;
         }
     }
 
+    /**
+     * Add dashboard routes with only 'auth' middleware (no role required by default).
+     */
     protected function addRoutes(): void
     {
         if (!$this->confirm('Add compliance dashboard routes? (requires Livewire)', true)) {
@@ -254,34 +264,10 @@ Route::middleware(['auth'])->group(function () {
         $content = File::get($routesPath);
         if (!str_contains($content, 'security-dashboard')) {
             File::append($routesPath, $routeCode);
-            $this->info('✅ Dashboard routes added to routes/web.php');
+            $this->info('✅ Dashboard routes added to routes/web.php (auth only).');
+            $this->line('   💡 To restrict access to specific roles, add "compliance.role" to the middleware group.');
         } else {
             $this->info('Dashboard routes already exist.');
-        }
-    }
-
-    /**
-     * Override the dashboard routes to add the compliance.role middleware.
-     */
-    protected function addRouteProtection(): void
-    {
-        $webRoutes = base_path('routes/web.php');
-        if (!File::exists($webRoutes)) {
-            $this->warn('routes/web.php not found. Cannot add route protection.');
-            return;
-        }
-
-        $content = File::get($webRoutes);
-        $protectionCode = "\n// Auto-protect sensitive routes (added by compliance:install)\nRoute::middleware(['auth', 'compliance.role'])->group(function () {\n    Route::get('/security-dashboard', \\GhanaCompliance\\Act843SDK\\Livewire\\SecurityDashboard::class)->name('compliance.dashboard');\n    Route::get('/ip/{ip}', \\GhanaCompliance\\Act843SDK\\Livewire\\IpProfile::class)->name('compliance.ip.profile');\n});\n";
-
-        // Check if the protected group already exists
-        if (!str_contains($content, 'compliance.role')) {
-            // Remove any previous unprotected route definitions to avoid duplicates
-            $content = preg_replace('/\/\/ Compliance SDK routes.*?\nRoute::middleware\(\[\'auth\'\]\)->group\(function \(\) \{\n.*?\n\}\);\n/s', '', $content);
-            File::put($webRoutes, $content . $protectionCode);
-            $this->info('✅ Route protection with role middleware added to routes/web.php');
-        } else {
-            $this->info('Route protection already present.');
         }
     }
 
@@ -333,9 +319,13 @@ Route::middleware(['auth'])->group(function () {
         $this->line('  1. Run: php artisan compliance:scan-passwords');
         $this->line('  2. Run: php artisan compliance:scan-retention');
         $this->line('  3. Run: php artisan compliance:audit-routes --log-missing (optional)');
-        $this->line('  4. Visit /security-dashboard (now protected by role middleware)');
+        $this->line('  4. Visit /security-dashboard (login required)');
         $this->newLine();
-        $this->line('🔒 RBAC monitoring active – all unauthorized access attempts are logged.');
+        $this->line('🔒 RBAC: Dashboard is protected by "auth" only. To restrict to specific roles:');
+        $this->line('   - Install spatie/laravel-permission or use Laravel Gates');
+        $this->line('   - Add middleware "compliance.role" to the route group in routes/web.php');
+        $this->line('   - See documentation: https://github.com/ghanacompliance/act843-sdk#rbac');
+        $this->line('');
         $this->line('⚙️  To allow access, assign the "compliance" role to users:');
         $this->line('   $user->assignRole("compliance");');
     }
@@ -369,7 +359,7 @@ return [
     |--------------------------------------------------------------------------
     */
     'rbac' => [
-        // Automatically apply 'compliance.role' middleware to routes containing these strings
+        // Patterns for routes to scan in the audit command
         'enforce_on_routes_containing' => [
             'dashboard', 'admin', 'compliance', 'security',
         ],
@@ -377,7 +367,7 @@ return [
         // Log unauthorized attempts without blocking? (false = block & log)
         'log_only' => env('COMPLIANCE_RBAC_LOG_ONLY', false),
 
-        // Required role for protected routes (default 'compliance')
+        // Required role for protected routes (used by the middleware)
         'required_role' => env('COMPLIANCE_REQUIRED_ROLE', 'compliance'),
 
         // Score to assign when unauthorized access is detected
