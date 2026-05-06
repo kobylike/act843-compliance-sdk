@@ -1,31 +1,17 @@
-<div class="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100" x-data="{ showFixModal: false }"
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100"
     wire:poll.10s="{{ $autoRefresh ? 'loadStats' : '' }}">
     <div class="container mx-auto px-6 py-8">
 
-        <!-- Header with Mode Toggle -->
+        <!-- Header -->
         <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <h1
                     class="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                     🛡️ Security & Compliance Intelligence
                 </h1>
-                <p class="text-slate-500 mt-2 text-sm">
-                    @if($simpleMode)
-                        Simple view – only urgent issues
-                    @else
-                        Advanced view – full technical details
-                    @endif
-                </p>
+                <p class="text-slate-500 mt-2 text-sm">Real-time threat monitoring & intelligence dashboard</p>
             </div>
-            <div class="flex gap-3 items-center">
-                <button wire:click="toggleSimpleMode"
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-700 hover:bg-slate-50 transition">
-                    @if($simpleMode)
-                        🔧 Switch to Advanced View
-                    @else
-                        👓 Switch to Simple View
-                    @endif
-                </button>
+            <div class="flex gap-3">
                 <button wire:click="exportCsv"
                     class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-700 hover:bg-slate-50 transition">
                     📥 Export CSV
@@ -41,207 +27,217 @@
             </div>
         </div>
 
-        <!-- Executive Summary with Functional "How to fix" -->
-        <div class="mb-8 bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-semibold text-slate-800 flex items-center gap-2">📊 Compliance Snapshot</h3>
-                <span
-                    class="text-sm px-3 py-1 rounded-full
-            {{ $executiveSummary['status_color'] === 'green' ? 'bg-green-100 text-green-700' : ($executiveSummary['status_color'] === 'yellow' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
-                    Grade {{ $executiveSummary['grade'] }} – {{ $executiveSummary['status_text'] }}
-                </span>
-            </div>
-            <div class="space-y-3">
-                @foreach($executiveSummary['alerts'] as $alert)
-                    <div
-                        class="border-l-4 {{ $alert['severity'] === 'high' ? 'border-red-500 bg-red-50' : ($alert['severity'] === 'medium' ? 'border-yellow-500 bg-yellow-50' : 'border-green-500 bg-green-50') }} p-3 rounded-r-xl">
-                        <p class="text-slate-800">{{ $alert['message'] }}</p>
-                        @if($alert['action'])
-                            <div class="mt-2">
-                                <button @click="showFixModal = true" class="text-sm text-indigo-600 hover:underline">
-                                    📌 {{ $alert['action_label'] }}
-                                </button>
-                            </div>
-                        @endif
-                    </div>
-                @endforeach
-            </div>
-        </div>
-
-        <!-- Alpine Modal -->
-        <div x-show="showFixModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title"
-            role="dialog" aria-modal="true" @click.away="showFixModal = false">
-            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                <div
-                    class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
-                        <h3 class="text-lg font-bold text-white">How to Fix Weak Password Hashes</h3>
-                    </div>
-                    <div class="bg-white px-6 py-4">
-                        <p class="text-slate-700 text-sm mb-4">The system has detected that some user passwords are
-                            stored in a weak format (plain text, MD5, SHA1, or unknown).</p>
-                        <div class="space-y-3">
-                            <div class="bg-slate-50 p-3 rounded-lg">
-                                <p class="font-medium text-slate-800 mb-1">1. Run a deep password scan</p>
-                                <code
-                                    class="text-xs bg-slate-800 text-slate-100 px-2 py-1 rounded block">php artisan compliance:scan-passwords --deep --force</code>
-                            </div>
-                            <div class="bg-slate-50 p-3 rounded-lg">
-                                <p class="font-medium text-slate-800 mb-1">2. Review the output to see how many weak
-                                    hashes exist</p>
-                            </div>
-                            <div class="bg-slate-50 p-3 rounded-lg">
-                                <p class="font-medium text-slate-800 mb-1">3. Use your user management system to
-                                    identify accounts with weak hashes (e.g., check password column format)</p>
-                            </div>
-                            <div class="bg-slate-50 p-3 rounded-lg">
-                                <p class="font-medium text-slate-800 mb-1">4. Reset affected passwords or re‑hash them
-                                    using bcrypt</p>
-                                <code
-                                    class="text-xs bg-slate-800 text-slate-100 px-2 py-1 rounded block">User::where(...)->update(['password' => Hash::make('newpassword')]);</code>
-                            </div>
+        <!-- Alerts Ticker -->
+        @if($alerts->count() > 0)
+            <div class="mb-6 bg-red-50 border-l-4 border-red-500 rounded-xl p-4 shadow-sm animate-pulse">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🚨</span>
+                    <span class="font-semibold text-red-700">{{ $alerts->count() }} Active Security Alerts</span>
+                    <div class="flex-1 overflow-hidden ml-4">
+                        <div class="whitespace-nowrap animate-marquee text-slate-600 text-sm">
+                            @foreach($alerts as $alert)
+                                <span class="inline-block mx-4">{{ $alert->title }} –
+                                    {{ $alert->created_at->diffForHumans() }}</span>
+                            @endforeach
                         </div>
-                        <p class="text-xs text-slate-500 mt-4">This system is detection‑only – it does not automatically
-                            fix passwords. The steps above assist you in manual remediation.</p>
-                    </div>
-                    <div class="bg-slate-50 px-6 py-3 flex justify-end">
-                        <button @click="showFixModal = false"
-                            class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition">Close</button>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- In simple mode, hide the advanced KPIs? We'll keep them but collapse optional-->
-        @if(!$simpleMode)
-            <!-- KPI Cards (unchanged) -->
-            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-5 mb-10">
-                @php
-                    $cards = [
-                        ['label' => 'Total Threats', 'value' => $stats['total_threats'], 'color' => 'text-red-600'],
-                        ['label' => 'High Risk', 'value' => $stats['high_risk'], 'color' => 'text-rose-600'],
-                        ['label' => 'Medium Risk', 'value' => $stats['medium_risk'], 'color' => 'text-amber-600'],
-                        ['label' => 'Low Risk', 'value' => $stats['low_risk'], 'color' => 'text-emerald-600'],
-                        ['label' => 'Unique IPs', 'value' => $stats['unique_ips'], 'color' => 'text-blue-600'],
-                        ['label' => 'Avg Score', 'value' => $stats['avg_score'], 'color' => 'text-purple-600'],
-                        ['label' => 'Active Alerts', 'value' => $stats['active_alerts'], 'color' => 'text-red-600'],
-                    ];
-                @endphp
-                @foreach($cards as $card)
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 hover:shadow-md transition">
-                        <p class="text-slate-500 text-xs font-medium uppercase tracking-wide">{{ $card['label'] }}</p>
-                        <p class="text-2xl font-bold {{ $card['color'] }} mt-2">{{ number_format($card['value']) }}</p>
-                    </div>
-                @endforeach
             </div>
         @endif
 
-        <!-- Compliance Health Section (collapsible in simple mode) -->
-        @if(!$simpleMode)
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-10">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-semibold text-slate-800 flex items-center gap-2">📋 Compliance Health (Act 843)</h3>
-                    <div class="flex gap-3">
-                        <button wire:click="runComplianceScans"
-                            class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-sm hover:bg-indigo-200 transition">
-                            🔄 Run Checks Now
+        <!-- Filters -->
+        <div
+            class="bg-white/70 backdrop-blur-sm rounded-2xl p-4 mb-8 flex flex-wrap gap-3 shadow-sm border border-slate-200">
+            <select wire:model.live="dateRange"
+                class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-700 text-sm">
+                <option value="today">📅 Today</option>
+                <option value="week">📆 Last 7 Days</option>
+                <option value="month">🗓️ Last 30 Days</option>
+            </select>
+
+            <select wire:model.live="filterSeverity"
+                class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-700 text-sm">
+                <option value="">All Severities</option>
+                <option value="HIGH">🔴 High</option>
+                <option value="MEDIUM">🟡 Medium</option>
+                <option value="LOW">🟢 Low</option>
+            </select>
+
+            <select wire:model.live="filterType"
+                class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-700 text-sm">
+                <option value="">All Types</option>
+                <option value="BRUTE_FORCE">Brute Force</option>
+                <option value="UNAUTHORIZED_ACCESS">Unauthorized</option>
+                <option value="CREDENTIAL_STUFFING">Credential Stuffing</option>
+            </select>
+
+            <button wire:click="loadStats"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 py-2 text-sm font-medium shadow-sm transition">
+                🔄 Refresh
+            </button>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-5 mb-10">
+            @php
+                $cards = [
+                    ['label' => 'Total Threats', 'value' => $stats['total_threats'], 'color' => 'text-red-600'],
+                    ['label' => 'High Risk', 'value' => $stats['high_risk'], 'color' => 'text-rose-600'],
+                    ['label' => 'Medium Risk', 'value' => $stats['medium_risk'], 'color' => 'text-amber-600'],
+                    ['label' => 'Low Risk', 'value' => $stats['low_risk'], 'color' => 'text-emerald-600'],
+                    ['label' => 'Unique IPs', 'value' => $stats['unique_ips'], 'color' => 'text-blue-600'],
+                    ['label' => 'Avg Score', 'value' => $stats['avg_score'], 'color' => 'text-purple-600'],
+                    ['label' => 'Active Alerts', 'value' => $stats['active_alerts'], 'color' => 'text-red-600'],
+                ];
+            @endphp
+            @foreach($cards as $card)
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 hover:shadow-md transition">
+                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wide">{{ $card['label'] }}</p>
+                    <p class="text-2xl font-bold {{ $card['color'] }} mt-2">{{ number_format($card['value']) }}</p>
+                </div>
+            @endforeach
+        </div>
+
+        <!-- Compliance Health Section -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-10">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-semibold text-slate-800 flex items-center gap-2">📋 Compliance Health (Act 843)</h3>
+                <div class="flex gap-3">
+                    <button wire:click="runComplianceScans"
+                        class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-sm hover:bg-indigo-200 transition">
+                        🔄 Run Checks Now
+                    </button>
+                    @if(config('compliance.allow_deep_password_scan', false))
+                        <button wire:click="runDeepScan"
+                            class="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm hover:bg-purple-200 transition">
+                            🧠 Deep Password Audit
                         </button>
-                        @if(config('compliance.allow_deep_password_scan', false))
-                            <button wire:click="runDeepScan"
-                                class="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm hover:bg-purple-200 transition">
-                                🧠 Deep Password Audit
-                            </button>
+                    @endif
+                    <span
+                        class="text-sm px-3 py-1 rounded-full {{ $complianceHealth['score'] >= 80 ? 'bg-green-100 text-green-700' : ($complianceHealth['score'] >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
+                        Score: {{ $complianceHealth['score'] }} / 100 (Grade {{ $complianceHealth['grade'] }})
+                    </span>
+                </div>
+            </div>
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Password Policy card -->
+                <div class="border border-slate-200 rounded-xl p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-xl">🔐</span>
+                        <h4 class="font-medium text-slate-800">Password Policy</h4>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span class="text-slate-500">Status</span><span
+                                class="font-medium">{{ $complianceHealth['password_policy']['status'] }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Weak
+                                Hashes</span><span>{{ $complianceHealth['password_policy']['weak_hashes'] }}</span>
+                        </div>
+                        <div class="flex justify-between"><span class="text-slate-500">Missing
+                                Policies</span><span>{{ $complianceHealth['password_policy']['weak_policies'] }}</span>
+                        </div>
+                        @if($complianceHealth['last_checks']['password'])
+                            <div class="flex justify-between text-xs text-slate-400"><span>Last
+                                    scan</span><span>{{ $complianceHealth['last_checks']['password']->diffForHumans() }}</span>
+                            </div>
                         @endif
-                        <span
-                            class="text-sm px-3 py-1 rounded-full {{ $complianceHealth['score'] >= 80 ? 'bg-green-100 text-green-700' : ($complianceHealth['score'] >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
-                            Score: {{ $complianceHealth['score'] }} / 100 (Grade {{ $complianceHealth['grade'] }})
-                        </span>
                     </div>
                 </div>
-                <div class="grid md:grid-cols-2 gap-6">
-                    <!-- Password Policy card -->
-                    <div class="border border-slate-200 rounded-xl p-4">
-                        <div class="flex items-center gap-2 mb-3">
-                            <span class="text-xl">🔐</span>
-                            <h4 class="font-medium text-slate-800">Password Policy</h4>
-                        </div>
-                        <div class="space-y-2 text-sm">
-                            <div class="flex justify-between"><span class="text-slate-500">Status</span><span
-                                    class="font-medium">{{ $complianceHealth['password_policy']['status'] }}</span></div>
-                            <div class="flex justify-between"><span class="text-slate-500">Weak
-                                    Hashes</span><span>{{ $complianceHealth['password_policy']['weak_hashes'] }}</span>
-                            </div>
-                            <div class="flex justify-between"><span class="text-slate-500">Missing
-                                    Policies</span><span>{{ $complianceHealth['password_policy']['weak_policies'] }}</span>
-                            </div>
-                            @if($complianceHealth['last_checks']['password'])
-                                <div class="flex justify-between text-xs text-slate-400"><span>Last
-                                        scan</span><span>{{ $complianceHealth['last_checks']['password']->diffForHumans() }}</span>
-                                </div>
-                            @endif
-                        </div>
+                <!-- Data Retention card (with purge buttons) -->
+                <div class="border border-slate-200 rounded-xl p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-xl">🗄️</span>
+                        <h4 class="font-medium text-slate-800">Data Retention</h4>
                     </div>
-                    <!-- Data Retention card -->
-                    <div class="border border-slate-200 rounded-xl p-4">
-                        <div class="flex items-center gap-2 mb-3">
-                            <span class="text-xl">🗄️</span>
-                            <h4 class="font-medium text-slate-800">Data Retention</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span class="text-slate-500">Status</span><span
+                                class="font-medium">{{ $complianceHealth['data_retention']['status'] }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Non‑compliant
+                                tables</span><span>{{ $complianceHealth['data_retention']['non_compliant'] }}</span>
                         </div>
-                        <div class="space-y-2 text-sm">
-                            <div class="flex justify-between"><span class="text-slate-500">Status</span><span
-                                    class="font-medium">{{ $complianceHealth['data_retention']['status'] }}</span></div>
-                            <div class="flex justify-between"><span class="text-slate-500">Non‑compliant
-                                    tables</span><span>{{ $complianceHealth['data_retention']['non_compliant'] }}</span>
+                        @if($complianceHealth['last_checks']['retention'])
+                            <div class="flex justify-between text-xs text-slate-400"><span>Last
+                                    scan</span><span>{{ $complianceHealth['last_checks']['retention']->diffForHumans() }}</span>
                             </div>
-                            @if($complianceHealth['last_checks']['retention'])
-                                <div class="flex justify-between text-xs text-slate-400"><span>Last
-                                        scan</span><span>{{ $complianceHealth['last_checks']['retention']->diffForHumans() }}</span>
-                                </div>
-                            @endif
+                        @endif
+                        <div class="flex gap-2 mt-3">
+                            <button wire:click="previewPurge"
+                                class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-md transition">🔍
+                                Preview old data</button>
+                            <button wire:click="runPurge"
+                                wire:confirm="Are you sure you want to permanently delete old records?"
+                                class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded-md transition">🗑️
+                                Delete old records now</button>
                         </div>
                     </div>
                 </div>
-                @if(!empty($complianceHealth['recommendations']))
-                    <div class="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200">
-                        <div class="flex items-center gap-2 text-amber-700 text-sm font-medium mb-1">⚡ Recommendations</div>
-                        <ul class="text-xs text-amber-800 space-y-1">
-                            @foreach($complianceHealth['recommendations'] as $rec)
-                                <li>• {{ $rec }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
+            </div>
+            @if(!empty($complianceHealth['recommendations']))
+                <div class="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                    <div class="flex items-center gap-2 text-amber-700 text-sm font-medium mb-1">⚡ Recommendations</div>
+                    <ul class="text-xs text-amber-800 space-y-1">
+                        @foreach($complianceHealth['recommendations'] as $rec)
+                            <li>• {{ $rec }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+        </div>
+
+        <!-- Administrative Actions (One‑click commands) -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-10">
+            <h3 class="font-semibold text-slate-800 flex items-center gap-2 mb-4">⚙️ Administrative Actions</h3>
+            <div class="flex flex-wrap gap-3">
+                <button wire:click="sendReportNow"
+                    class="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm hover:bg-indigo-100 transition">
+                    📤 Send report to regulator now
+                </button>
+                <button wire:click="sendWeeklyReportNow"
+                    class="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm hover:bg-indigo-100 transition">
+                    📧 Email weekly report now
+                </button>
+                <button wire:click="runRouteAudit"
+                    class="px-4 py-2 bg-amber-50 text-amber-700 rounded-lg text-sm hover:bg-amber-100 transition">
+                    🔍 Scan routes for missing protection
+                </button>
+                <button wire:click="runDsrEvaluation"
+                    class="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm hover:bg-purple-100 transition">
+                    📊 Run DSR evaluation (last 30 days)
+                </button>
+                <button wire:click="decayIpScores"
+                    class="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm hover:bg-blue-100 transition">
+                    📉 Decay IP scores now
+                </button>
+                @if(config('compliance.anomaly_detection', false))
+                    <button wire:click="trainAnomalyModel"
+                        class="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg text-sm hover:bg-emerald-100 transition">
+                        🤖 Train anomaly detection model
+                    </button>
                 @endif
             </div>
-        @endif
+        </div>
 
-        <!-- Decision Engine and Attack Graph (hidden in simple mode) -->
-        @if(!$simpleMode)
-            @livewire('decision-engine')
-            @livewire('attack-graph')
-            @livewire('predicted-attacks')
-        @endif
+        <!-- Decision Engine and Attack Graph -->
+        @livewire('decision-engine')
+        @livewire('attack-graph')
+        @livewire('predicted-attacks')
 
-        <!-- Charts Row (hidden in simple mode) -->
-        @if(!$simpleMode)
-            <div class="grid lg:grid-cols-3 gap-8 mb-10">
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-                    <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">📈 Risk Score Trend</h3>
-                    <canvas id="trendChart" class="w-full h-64"></canvas>
-                </div>
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-                    <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">🎯 Attack Type Distribution</h3>
-                    <canvas id="attackChart" class="w-full h-64"></canvas>
-                </div>
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-                    <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">📊 Compliance Score Trend</h3>
-                    <canvas id="complianceTrendChart" class="w-full h-64"></canvas>
-                </div>
+        <!-- Charts Row -->
+        <div class="grid lg:grid-cols-3 gap-8 mb-10">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">📈 Risk Score Trend</h3>
+                <canvas id="trendChart" class="w-full h-64"></canvas>
             </div>
-        @endif
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">🎯 Attack Type Distribution</h3>
+                <canvas id="attackChart" class="w-full h-64"></canvas>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">📊 Compliance Score Trend</h3>
+                <canvas id="complianceTrendChart" class="w-full h-64"></canvas>
+            </div>
+        </div>
 
-        <!-- Threat Investigation Table - filtered in simple mode -->
+        <!-- Table & Top IPs -->
         <div class="grid lg:grid-cols-3 gap-8">
             <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-5 overflow-x-auto">
                 <h3 class="font-semibold text-slate-800 mb-4">🔍 Threat Investigation Table</h3>
@@ -261,17 +257,15 @@
                         @foreach($logs as $log)
                             <tr class="border-b border-slate-100 hover:bg-slate-50 transition">
                                 <td class="py-3 px-2 text-slate-700">{{ $log->type }}</td>
-                                <td class="py-3 px-2"><a wire:navigate
-                                        href="{{ route('compliance.ip.profile', $log->ip_address) }}"
+                                <td class="py-3 px-2"><a href="{{ route('compliance.ip.profile', $log->ip_address) }}"
                                         class="text-indigo-600 hover:text-indigo-800 font-medium">{{ $log->ip_address }}</a>
                                 </td>
                                 <td class="py-3 px-2 font-mono font-bold">{{ $log->score }}</td>
                                 <td class="py-3 px-2">
-                                    <span
-                                        class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold
-                                                            {{ $log->severity === 'HIGH' ? 'bg-red-100 text-red-700' : '' }}
-                                                            {{ $log->severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' : '' }}
-                                                            {{ $log->severity === 'LOW' ? 'bg-green-100 text-green-700' : '' }}">
+                                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold
+                                            {{ $log->severity === 'HIGH' ? 'bg-red-100 text-red-700' : '' }}
+                                            {{ $log->severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' : '' }}
+                                            {{ $log->severity === 'LOW' ? 'bg-green-100 text-green-700' : '' }}">
                                         {{ $log->severity }}
                                     </span>
                                 </td>
@@ -290,7 +284,6 @@
                 <div class="mt-5">{{ $logs->links() }}</div>
             </div>
 
-            <!-- Top Risky IPs - always visible -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
                 <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">🚨 Top Risky IPs</h3>
                 <div class="space-y-3">
@@ -310,6 +303,30 @@
                             </div>
                         </div>
                     @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for command output -->
+    <div x-data="{ open: false }" x-on:open-modal.window="open = true" x-show="open" x-cloak
+        class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div
+                class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
+                    <h3 class="text-lg font-bold text-white">{{ $modalTitle ?? 'Command Output' }}</h3>
+                </div>
+                <div class="bg-white px-6 py-4">
+                    <div class="text-slate-700 text-sm max-h-96 overflow-y-auto font-mono">
+                        {!! $modalContent ?? '' !!}
+                    </div>
+                </div>
+                <div class="bg-slate-50 px-6 py-3 flex justify-end">
+                    <button @click="open = false"
+                        class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition">Close</button>
                 </div>
             </div>
         </div>
