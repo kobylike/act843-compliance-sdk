@@ -28,6 +28,14 @@ class SecurityDashboard extends Component
     public $modalTitle = '';
     public $modalContent = '';
 
+    /**
+     * Dispatch a toast notification.
+     */
+    private function toast($message, $type = 'success')
+    {
+        $this->dispatch('toast', message: $message, type: $type);
+    }
+
     public function mount()
     {
         $this->loadStats();
@@ -40,6 +48,7 @@ class SecurityDashboard extends Component
         $this->simpleMode = !$this->simpleMode;
         session(['compliance_simple_mode' => $this->simpleMode]);
         $this->dispatch('refreshDashboard');
+        $this->toast('Switched to ' . ($this->simpleMode ? 'Simple' : 'Advanced') . ' view', 'info');
     }
 
     public function loadStats()
@@ -76,27 +85,35 @@ class SecurityDashboard extends Component
         $this->complianceHealth = app(ComplianceHealthService::class)->getHealthMetrics();
     }
 
-    // --- Existing scans ---
+    // --- Scans ---
     public function runComplianceScans()
     {
-        Artisan::call('compliance:scan-passwords');
-        Artisan::call('compliance:scan-retention');
-        $this->loadComplianceHealth();
-        $this->dispatch('notify', 'Compliance scans completed', 'success');
+        try {
+            Artisan::call('compliance:scan-passwords');
+            Artisan::call('compliance:scan-retention');
+            $this->loadComplianceHealth();
+            $this->toast('Compliance scans completed successfully', 'success');
+        } catch (\Exception $e) {
+            $this->toast('Scan failed: ' . $e->getMessage(), 'error');
+        }
     }
 
     public function runDeepScan()
     {
         if (!config('compliance.allow_deep_password_scan', false)) {
-            $this->dispatch('notify', 'Deep scanning disabled. Set ALLOW_DEEP_PASSWORD_SCAN=true in .env', 'error');
+            $this->toast('Deep scanning disabled. Set ALLOW_DEEP_PASSWORD_SCAN=true in .env', 'error');
             return;
         }
-        Artisan::call('compliance:scan-passwords', ['--deep' => true, '--force' => true]);
-        $this->loadComplianceHealth();
-        $this->dispatch('notify', 'Deep password scan completed.', 'success');
+        try {
+            Artisan::call('compliance:scan-passwords', ['--deep' => true, '--force' => true]);
+            $this->loadComplianceHealth();
+            $this->toast('Deep password scan completed', 'success');
+        } catch (\Exception $e) {
+            $this->toast('Deep scan failed: ' . $e->getMessage(), 'error');
+        }
     }
 
-    // --- New: Data Retention actions ---
+    // --- Data Retention ---
     public function previewPurge()
     {
         Artisan::call('compliance:purge --dry-run');
@@ -108,81 +125,116 @@ class SecurityDashboard extends Component
 
     public function runPurge()
     {
-        Artisan::call('compliance:purge');
-        $output = Artisan::output();
-        $this->modalTitle = 'Purge Result';
-        $this->modalContent = nl2br(e($output));
-        $this->dispatch('openModal');
-        $this->loadComplianceHealth(); // refresh retention status
+        try {
+            Artisan::call('compliance:purge');
+            $output = Artisan::output();
+            $this->modalTitle = 'Purge Result';
+            $this->modalContent = nl2br(e($output));
+            $this->dispatch('openModal');
+            $this->loadComplianceHealth();
+            $this->toast('Old records purged successfully', 'success');
+        } catch (\Exception $e) {
+            $this->toast('Purge failed: ' . $e->getMessage(), 'error');
+        }
     }
 
-    // --- New: Regulator reporting ---
+    // --- Regulator reporting ---
     public function sendReportNow()
     {
-        Artisan::call('compliance:send-report');
-        $output = Artisan::output();
-        $this->modalTitle = 'Send Report to Regulator';
-        $this->modalContent = nl2br(e($output));
-        $this->dispatch('openModal');
+        try {
+            Artisan::call('compliance:send-report');
+            $output = Artisan::output();
+            $this->modalTitle = 'Send Report to Regulator';
+            $this->modalContent = nl2br(e($output));
+            $this->dispatch('openModal');
+            $this->toast('Report sent to regulator', 'success');
+        } catch (\Exception $e) {
+            $this->toast('Failed to send report: ' . $e->getMessage(), 'error');
+        }
     }
 
     public function sendWeeklyReportNow()
     {
-        Artisan::call('compliance:weekly-report');
-        $output = Artisan::output();
-        $this->modalTitle = 'Weekly Report Email';
-        $this->modalContent = nl2br(e($output));
-        $this->dispatch('openModal');
+        try {
+            Artisan::call('compliance:weekly-report');
+            $output = Artisan::output();
+            $this->modalTitle = 'Weekly Report Email';
+            $this->modalContent = nl2br(e($output));
+            $this->dispatch('openModal');
+            $this->toast('Weekly report email sent', 'success');
+        } catch (\Exception $e) {
+            $this->toast('Failed to send weekly report: ' . $e->getMessage(), 'error');
+        }
     }
 
-    // --- New: Route audit ---
+    // --- Route audit ---
     public function runRouteAudit()
     {
-        Artisan::call('compliance:audit-routes --log-missing');
-        $output = Artisan::output();
-        $this->modalTitle = 'Route Audit Results';
-        $this->modalContent = nl2br(e($output));
-        $this->dispatch('openModal');
+        try {
+            Artisan::call('compliance:audit-routes --log-missing');
+            $output = Artisan::output();
+            $this->modalTitle = 'Route Audit Results';
+            $this->modalContent = nl2br(e($output));
+            $this->dispatch('openModal');
+            $this->toast('Route audit completed', 'success');
+        } catch (\Exception $e) {
+            $this->toast('Route audit failed: ' . $e->getMessage(), 'error');
+        }
     }
 
-    // --- New: DSR Evaluation ---
+    // --- DSR Evaluation ---
     public function runDsrEvaluation()
     {
-        $from = now()->subDays(30)->format('Y-m-d');
-        $to = now()->format('Y-m-d');
-        Artisan::call("compliance:evaluate --from={$from} --to={$to}");
-        $output = Artisan::output();
-        $this->modalTitle = 'DSR Evaluation (last 30 days)';
-        $this->modalContent = nl2br(e($output));
-        $this->dispatch('openModal');
+        try {
+            $from = now()->subDays(30)->format('Y-m-d');
+            $to = now()->format('Y-m-d');
+            Artisan::call("compliance:evaluate --from={$from} --to={$to}");
+            $output = Artisan::output();
+            $this->modalTitle = 'DSR Evaluation (last 30 days)';
+            $this->modalContent = nl2br(e($output));
+            $this->dispatch('openModal');
+            $this->toast('DSR evaluation completed', 'success');
+        } catch (\Exception $e) {
+            $this->toast('DSR evaluation failed: ' . $e->getMessage(), 'error');
+        }
     }
 
-    // --- New: Decay IP scores ---
+    // --- Decay IP scores ---
     public function decayIpScores()
     {
-        Artisan::call('security:decay-ips');
-        $output = Artisan::output();
-        $this->modalTitle = 'Decay IP Reputations';
-        $this->modalContent = nl2br(e($output));
-        $this->dispatch('openModal');
-        $this->loadStats(); // refresh top IPs list
+        try {
+            Artisan::call('security:decay-ips');
+            $output = Artisan::output();
+            $this->modalTitle = 'Decay IP Reputations';
+            $this->modalContent = nl2br(e($output));
+            $this->dispatch('openModal');
+            $this->loadStats();
+            $this->toast('IP scores decayed', 'success');
+        } catch (\Exception $e) {
+            $this->toast('Decay failed: ' . $e->getMessage(), 'error');
+        }
     }
 
-    // --- New: Train anomaly model (if enabled) ---
+    // --- Train anomaly model ---
     public function trainAnomalyModel()
     {
         if (!config('compliance.anomaly_detection', false)) {
-            $this->dispatch('notify', 'Anomaly detection is disabled. Enable COMPLIANCE_ANOMALY_DETECTION=true in .env', 'error');
+            $this->toast('Anomaly detection is disabled. Enable COMPLIANCE_ANOMALY_DETECTION=true in .env', 'error');
             return;
         }
-        Artisan::call('compliance:train-anomaly');
-        $output = Artisan::output();
-        $this->modalTitle = 'Anomaly Model Training';
-        $this->modalContent = nl2br(e($output));
-        $this->dispatch('openModal');
+        try {
+            Artisan::call('compliance:train-anomaly');
+            $output = Artisan::output();
+            $this->modalTitle = 'Anomaly Model Training';
+            $this->modalContent = nl2br(e($output));
+            $this->dispatch('openModal');
+            $this->toast('Anomaly model trained', 'success');
+        } catch (\Exception $e) {
+            $this->toast('Training failed: ' . $e->getMessage(), 'error');
+        }
     }
 
-    // --- Existing methods (getChartData, getAttackTypeDistribution, getComplianceTrendData, exportCsv, getExecutiveSummary, render) unchanged ---
+    // --- Charts and data helpers ---
     #[On('echo:security,AlertEvent')]
     public function refreshAlerts()
     {
