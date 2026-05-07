@@ -9,7 +9,7 @@ use GhanaCompliance\Act843SDK\Services\Security\AlertService;
 use GhanaCompliance\Act843SDK\Services\Security\AutomatedResponse;
 use GhanaCompliance\Act843SDK\Services\PatternDetectionService;
 use GhanaCompliance\Act843SDK\Services\RecommendationEngine;
-use GhanaCompliance\Act843SDK\Services\Security\AttackGraphPredictor;   // ✅ IMPORT
+use GhanaCompliance\Act843SDK\Services\Security\AttackGraphPredictor;
 
 class ComplianceService
 {
@@ -33,51 +33,30 @@ class ComplianceService
         $ip = $data['ip'];
         $attempts = $data['attempts'] ?? 0;
 
-        // Log only at important thresholds
-        $thresholds = config('security.log_thresholds', [1, 3, 5, 10, 15, 20, 25, 30, 40, 50]);
-        if (!in_array($attempts, $thresholds) && $attempts <= 50) {
-            return;
-        }
+        // REMOVED: The threshold check and logging – this is already done in LogFailedLoginAttempt
+        // The listener already logged the event. Here we only do secondary actions.
 
-        // 1. Analyze risk (produces $analysis)
+        // 1. Analyze risk (for reputation and alerts, not for logging)
         $analysis = $this->analyzer->analyze([
             'type' => $data['type'] ?? 'BRUTE_FORCE',
             'attempts' => $attempts,
             'ip' => $ip,
         ]);
 
-        // 2. Record transition for attack graph (after analysis is ready)
+        // 2. Record transition for attack graph
         app(AttackGraphPredictor::class)->recordTransition(
             $ip,
             $analysis['type'],
             $data['route'] ?? request()->path()
         );
 
-        // 3. Detect patterns
+        // 3. Detect patterns (for alert context only)
         $patterns = $this->patternDetector->detect($data);
-        if (!empty($patterns)) {
-            $analysis['patterns'] = $patterns;
-        }
 
-        // 4. Generate recommendation
-        $recommendation = app(RecommendationEngine::class)->generate($analysis);
-
-        // 5. Log to compliance
-        ComplianceEngine::log([
-            ...$analysis,
-            'attempts' => $attempts,
-            'meta' => [
-                ...$data,
-                'analysis_details' => $analysis['analysis'] ?? [],
-                'patterns' => $patterns,
-            ],
-            'recommendation' => $recommendation['action'],
-        ]);
-
-        // 6. Update IP reputation
+        // 4. Update IP reputation (always do this)
         $reputation = $this->reputationEngine->update($ip, $attempts, $analysis['score']);
 
-        // 7. Alert for high severity
+        // 5. Alert for high severity (only if severity is HIGH)
         if ($analysis['severity'] === 'HIGH') {
             $this->alertService->send(
                 'HIGH',
@@ -87,7 +66,7 @@ class ComplianceService
             );
         }
 
-        // 8. Automated response (suggestions only)
+        // 6. Automated response (suggestions only)
         $analysis['ip'] = $ip;
         $response = $this->automatedResponse->handle($analysis);
 
